@@ -1,60 +1,88 @@
 import { useState } from 'react'
 import SetupScreen from './SetupScreen'
 import GameScreen from './GameScreen'
-import { GameState, JEWELRY, Player } from './types'
-import { spin } from './spin'
+import { GameState, JEWELRY, Player, PLAYER_COLORS } from './types'
+import { SPINNER_SECTIONS, randomSection } from './spin'
 
-function initGame(players: Player[]): GameState {
-  return {
-    players,
-    currentIndex: 0,
-    phase: 'playing',
-    winner: null,
-    lastSpin: null,
-  }
+function initGame(names: string[]): GameState {
+  const players: Player[] = names.map((name, i) => ({
+    name,
+    color: PLAYER_COLORS[i],
+    inventory: [],
+    hasBlackRing: false,
+  }))
+  return { players, currentIndex: 0, phase: 'playing', winner: null, lastSpin: null }
 }
 
 export default function App() {
   const [game, setGame] = useState<GameState | null>(null)
+  const [isSpinning, setIsSpinning] = useState(false)
+  const [pendingSection, setPendingSection] = useState(0)
+  const [spinTrigger, setSpinTrigger] = useState(0)
 
-  function handleStart(players: Player[]) {
-    setGame(initGame(players))
+  function handleStart(names: string[]) {
+    setGame(initGame(names))
+    setIsSpinning(false)
+    setSpinTrigger(0)
   }
 
-  function handleSpin() {
+  function handleSpinStart() {
+    if (!game || isSpinning || game.phase !== 'playing') return
+    const section = randomSection()
+    setPendingSection(section)
+    setSpinTrigger(t => t + 1)
+    setIsSpinning(true)
+  }
+
+  function handleSpinComplete() {
     setGame(prev => {
-      if (!prev || prev.phase !== 'playing') return prev
+      if (!prev) return prev
       const players = prev.players.map(p => ({ ...p, inventory: [...p.inventory] }))
       const current = players[prev.currentIndex]
-      const result = spin(current)
-
+      const section = SPINNER_SECTIONS[pendingSection]
       let lastSpin: string
-      if (result.type === 'gain') {
-        current.inventory.push(result.piece)
-        lastSpin = `${current.name} got ${result.piece}!`
+
+      if (section.jewel === null) {
+        // Black ring: take from whoever has it (or center)
+        players.forEach(p => { p.hasBlackRing = false })
+        current.hasBlackRing = true
+        lastSpin = `${current.name} got the Black Ring! ⚫`
       } else {
-        lastSpin = result.message
+        if (current.inventory.includes(section.jewel)) {
+          lastSpin = `${current.name} already has ${section.jewel}!`
+        } else {
+          current.inventory.push(section.jewel)
+          lastSpin = `${current.name} got ${section.jewel}!`
+        }
       }
 
-      // Check win (KAN-14)
-      const won = current.inventory.length === JEWELRY.length
-      if (won) {
+      // Win: all 5 jewels + no black ring
+      if (current.inventory.length === JEWELRY.length && !current.hasBlackRing) {
         return { ...prev, players, phase: 'won', winner: prev.currentIndex, lastSpin }
       }
 
-      // Advance turn (KAN-10)
-      const nextIndex = (prev.currentIndex + 1) % prev.players.length
-      return { ...prev, players, currentIndex: nextIndex, lastSpin }
+      return { ...prev, players, currentIndex: (prev.currentIndex + 1) % prev.players.length, lastSpin }
     })
+    setIsSpinning(false)
   }
 
   function handleNewGame() {
     setGame(null)
+    setIsSpinning(false)
+    setSpinTrigger(0)
   }
 
-  if (!game) {
-    return <SetupScreen onStart={handleStart} />
-  }
+  if (!game) return <SetupScreen onStart={handleStart} />
 
-  return <GameScreen game={game} onSpin={handleSpin} onNewGame={handleNewGame} />
+  return (
+    <GameScreen
+      game={game}
+      isSpinning={isSpinning}
+      spinTrigger={spinTrigger}
+      pendingSection={pendingSection}
+      onSpinStart={handleSpinStart}
+      onSpinComplete={handleSpinComplete}
+      onNewGame={handleNewGame}
+    />
+  )
 }

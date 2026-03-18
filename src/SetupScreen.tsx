@@ -1,8 +1,7 @@
 import { useState } from 'react'
-import { Player } from './types'
 
 interface Props {
-  onStart: (players: Player[]) => void
+  onStart: (names: string[]) => void
 }
 
 const BTN: React.CSSProperties = {
@@ -47,28 +46,19 @@ export default function SetupScreen({ onStart }: Props) {
 
   function handleStart() {
     if (!canStart || count === null) return
-    const players = playerNames.map(name => ({ name: name.trim(), inventory: [] }))
-    onStart(players)
+    onStart(playerNames.map(n => n.trim()))
   }
 
   return (
     <div style={{ textAlign: 'center' }}>
-      {/* Title */}
       <div style={{ marginBottom: 32 }}>
         <div style={{ fontSize: 48, marginBottom: 8 }}>👑</div>
-        <h1 style={{ fontSize: 28, color: '#7b1fa2', letterSpacing: 1 }}>
-          Pretty Pretty Princess
-        </h1>
-        <p style={{ color: '#9c27b0', marginTop: 6, fontSize: 15 }}>
-          Collect all 5 jewels to win! 💍📿💎✨
-        </p>
+        <h1 style={{ fontSize: 28, color: '#7b1fa2', letterSpacing: 1 }}>Pretty Pretty Princess</h1>
+        <p style={{ color: '#9c27b0', marginTop: 6, fontSize: 15 }}>Collect all 5 jewels to win! 💍📿💎✨</p>
       </div>
 
-      {/* KAN-7: Player count */}
       <div style={{ marginBottom: 32 }}>
-        <p style={{ fontSize: 18, color: '#6a1b9a', marginBottom: 16, fontWeight: 'bold' }}>
-          How many players?
-        </p>
+        <p style={{ fontSize: 18, color: '#6a1b9a', marginBottom: 16, fontWeight: 'bold' }}>How many players?</p>
         <div style={{ display: 'flex', gap: 16, justifyContent: 'center' }}>
           {([2, 3] as const).map(n => (
             <button
@@ -87,18 +77,13 @@ export default function SetupScreen({ onStart }: Props) {
         </div>
       </div>
 
-      {/* KAN-8: Player names */}
       {count !== null && (
         <div style={{ marginBottom: 32 }}>
-          <p style={{ fontSize: 18, color: '#6a1b9a', marginBottom: 16, fontWeight: 'bold' }}>
-            Enter names
-          </p>
+          <p style={{ fontSize: 18, color: '#6a1b9a', marginBottom: 16, fontWeight: 'bold' }}>Enter names</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {Array.from({ length: count }, (_, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 22, width: 32 }}>
-                  {['💜', '💗', '💙'][i]}
-                </span>
+                <span style={{ fontSize: 22, width: 32 }}>{['💜', '💗', '💙'][i]}</span>
                 <input
                   style={INPUT}
                   value={names[i]}
@@ -116,7 +101,6 @@ export default function SetupScreen({ onStart }: Props) {
         </div>
       )}
 
-      {/* KAN-9: Start button */}
       {count !== null && (
         <button
           onClick={handleStart}

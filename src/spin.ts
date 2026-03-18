@@ -1,17 +1,14 @@
-import { JEWELRY, JewelryId, Player } from './types'
+import { JewelryId } from './types'
 
-export type SpinResult =
-  | { type: 'gain'; piece: JewelryId }
-  | { type: 'nothing'; message: string }
+export const SPINNER_SECTIONS: { emoji: string; color: string; jewel: JewelryId | null }[] = [
+  { emoji: '👑', color: '#f48fb1', jewel: '👑' },
+  { emoji: '💍', color: '#ce93d8', jewel: '💍' },
+  { emoji: '📿', color: '#90caf9', jewel: '📿' },
+  { emoji: '💎', color: '#ffe082', jewel: '💎' },
+  { emoji: '✨', color: '#a5d6a7', jewel: '✨' },
+  { emoji: '⚫', color: '#616161', jewel: null },
+]
 
-export function spin(player: Player): SpinResult {
-  const missing = JEWELRY.filter(j => !player.inventory.includes(j))
-  if (missing.length === 0) return { type: 'nothing', message: 'Already has everything!' }
-
-  // 75% chance to gain a missing piece, 25% nothing
-  if (Math.random() < 0.75) {
-    const piece = missing[Math.floor(Math.random() * missing.length)]
-    return { type: 'gain', piece }
-  }
-  return { type: 'nothing', message: 'No luck this turn...' }
+export function randomSection(): number {
+  return Math.floor(Math.random() * 6)
 }
