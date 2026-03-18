@@ -48,35 +48,21 @@ export default function Spinner({ spinTrigger, targetSection, onSpinComplete }: 
   }, [spinTrigger])
 
   return (
-    <svg
-      width={SIZE}
-      height={SIZE}
-      viewBox={`0 0 ${SIZE} ${SIZE}`}
-      style={{ display: 'block', margin: '0 auto' }}
-    >
-      <g
-        style={{
-          transform: `rotate(${rotation}deg)`,
-          transformOrigin: `${CX}px ${CY}px`,
-          transition: animating ? 'transform 2.5s cubic-bezier(0.15, 0.85, 0.25, 1)' : 'none',
-        }}
-      >
+    <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} style={{ display: 'block', margin: '0 auto' }}>
+      <g style={{
+        transform: `rotate(${rotation}deg)`,
+        transformOrigin: `${CX}px ${CY}px`,
+        // Fast burst then suspenseful crawl to a stop
+        transition: animating ? 'transform 2.5s cubic-bezier(0.0, 0.0, 0.08, 1.0)' : 'none',
+      }}>
         {SPINNER_SECTIONS.map((s, i) => (
           <path key={i} d={wedgePath(s.startDeg, s.endDeg)} fill={s.color} stroke="#fff" strokeWidth="2" />
         ))}
         {SPINNER_SECTIONS.map((s, i) => {
           const center = (s.startDeg + s.endDeg) / 2
-          const arcSize = s.endDeg - s.startDeg
           const pos = toXY(center, LABEL_R)
           return (
-            <text
-              key={i}
-              x={pos.x}
-              y={pos.y}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fontSize={arcSize <= 30 ? '14' : '24'}
-            >
+            <text key={i} x={pos.x} y={pos.y} textAnchor="middle" dominantBaseline="middle" fontSize="22">
               {s.emoji}
             </text>
           )

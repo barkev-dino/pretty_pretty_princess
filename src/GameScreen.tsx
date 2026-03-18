@@ -40,12 +40,9 @@ export default function GameScreen({
 
   return (
     <div style={{ textAlign: 'center' }}>
-      {/* Pick Any modal */}
       {pickAnyPending && (
         <Modal title="⭐ Pick any jewel!" items={missingJewels} onSelect={onPickAny} />
       )}
-
-      {/* Put Back Choice modal */}
       {putBackChoicePending && (
         <Modal title="↩️ Choose a jewel to return" items={current.inventory} onSelect={onPutBackChoice} />
       )}
@@ -59,29 +56,23 @@ export default function GameScreen({
         <div style={{ fontSize: 26, fontWeight: 'bold' }}>{current.name}</div>
       </div>
 
-      {/* Spinner */}
       <Spinner spinTrigger={spinTrigger} targetSection={pendingSection} onSpinComplete={onSpinComplete} />
 
-      {/* Legend */}
+      {/* Legend — icons only, no color swatches */}
       <div style={{
         display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
-        gap: '4px 6px', margin: '8px 0 10px',
+        gap: '3px 6px', margin: '8px 0 10px',
         padding: '8px 10px',
         background: 'rgba(255,255,255,0.6)', borderRadius: 10,
       }}>
         {SPINNER_SECTIONS.map((s, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <span style={{
-              width: 12, height: 12, background: s.color,
-              borderRadius: 3, border: '1px solid rgba(0,0,0,0.12)', flexShrink: 0,
-            }} />
-            <span style={{ fontSize: 13 }}>{s.emoji}</span>
-            <span style={{ fontSize: 10, color: '#6a1b9a', whiteSpace: 'nowrap' }}>{s.label}</span>
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontSize: 14 }}>{s.emoji}</span>
+            <span style={{ fontSize: 10, color: '#6a1b9a' }}>{s.label}</span>
           </div>
         ))}
       </div>
 
-      {/* Result message */}
       {game.lastSpin && (
         <div style={{
           background: 'rgba(255,255,255,0.75)', borderRadius: 12,
@@ -91,7 +82,6 @@ export default function GameScreen({
         </div>
       )}
 
-      {/* Spin button */}
       <button
         onClick={onSpinStart}
         disabled={isSpinning}
@@ -110,14 +100,22 @@ export default function GameScreen({
             border: `2px solid ${i === game.currentIndex ? p.color : 'transparent'}`,
           }}>
             <div style={{ width: 10, height: 10, borderRadius: '50%', background: p.color, flexShrink: 0 }} />
-            <span style={{ fontWeight: 'bold', color: p.color, minWidth: 80, textAlign: 'left' }}>{p.name}</span>
-            <span style={{ fontSize: 20, letterSpacing: 3, flex: 1, textAlign: 'left' }}>
-              {p.inventory.length === 0
-                ? <span style={{ color: '#ccc', fontSize: 13 }}>no jewels yet</span>
-                : p.inventory.join(' ')}
+            <span style={{ fontWeight: 'bold', color: p.color, minWidth: 72, textAlign: 'left', fontSize: 14 }}>
+              {p.name}
+            </span>
+            {/* All jewels: bright if collected, faded if still needed */}
+            <span style={{ flex: 1, textAlign: 'left', letterSpacing: 2 }}>
+              {JEWELRY.map(j => (
+                <span key={j} style={{
+                  fontSize: p.inventory.includes(j) ? 20 : 15,
+                  opacity: p.inventory.includes(j) ? 1 : 0.2,
+                  marginRight: 2,
+                }}>
+                  {j}
+                </span>
+              ))}
             </span>
             {p.hasBlackRing && <span title="Black Ring">⚫</span>}
-            <span style={{ color: p.color, fontSize: 12 }}>{p.inventory.length}/5</span>
           </div>
         ))}
       </div>
@@ -133,10 +131,8 @@ export default function GameScreen({
 function Modal({ title, items, onSelect }: { title: string; items: readonly JewelryId[]; onSelect: (j: JewelryId) => void }) {
   return (
     <div style={{
-      position: 'fixed', inset: 0,
-      background: 'rgba(0,0,0,0.4)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      zIndex: 100,
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
     }}>
       <div style={{
         background: 'linear-gradient(135deg, #fce4ec, #f3e5f5)',
@@ -150,9 +146,7 @@ function Modal({ title, items, onSelect }: { title: string; items: readonly Jewe
               fontSize: 38, background: 'rgba(255,255,255,0.85)',
               border: '2px solid #ce93d8', borderRadius: 12,
               padding: '8px 14px', cursor: 'pointer',
-            }}>
-              {j}
-            </button>
+            }}>{j}</button>
           ))}
         </div>
       </div>

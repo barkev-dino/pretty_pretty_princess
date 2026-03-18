@@ -2,8 +2,6 @@ export function playSpinSound() {
   try {
     const ctx = new AudioContext()
     const sr = ctx.sampleRate
-
-    // Whoosh: band-pass filtered noise that slows down
     const buf = ctx.createBuffer(1, (sr * 2.5) | 0, sr)
     const d = buf.getChannelData(0)
     for (let i = 0; i < d.length; i++) {
@@ -18,28 +16,64 @@ export function playSpinSound() {
     const ng = ctx.createGain()
     ng.gain.setValueAtTime(0.35, ctx.currentTime)
     ng.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 2.4)
-    noise.connect(filt)
-    filt.connect(ng)
-    ng.connect(ctx.destination)
+    noise.connect(filt); filt.connect(ng); ng.connect(ctx.destination)
     noise.start()
-
-    // Carnival melody: C E G A G E C A
     const notes = [523, 659, 784, 880, 784, 659, 523, 440]
     notes.forEach((freq, i) => {
       const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.type = 'triangle'
-      osc.frequency.value = freq
+      const g = ctx.createGain()
+      osc.type = 'triangle'; osc.frequency.value = freq
       const t = ctx.currentTime + i * 0.28
-      gain.gain.setValueAtTime(0, t)
-      gain.gain.linearRampToValueAtTime(0.2, t + 0.02)
-      gain.gain.exponentialRampToValueAtTime(0.01, t + 0.22)
-      osc.connect(gain)
-      gain.connect(ctx.destination)
-      osc.start(t)
-      osc.stop(t + 0.28)
+      g.gain.setValueAtTime(0, t)
+      g.gain.linearRampToValueAtTime(0.2, t + 0.02)
+      g.gain.exponentialRampToValueAtTime(0.01, t + 0.22)
+      osc.connect(g); g.connect(ctx.destination)
+      osc.start(t); osc.stop(t + 0.28)
     })
-  } catch {
-    // AudioContext blocked (e.g. no user interaction) — silently skip
-  }
+  } catch {}
+}
+
+// Sad wah-wah trombone for black ring
+export function playSadSound() {
+  try {
+    const ctx = new AudioContext()
+    const notes = [349, 311, 277, 233] // F Eb Db Bb descending
+    const dur = 0.4
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator()
+      const g = ctx.createGain()
+      osc.type = 'sawtooth'
+      osc.frequency.value = freq
+      // Vibrato
+      const lfo = ctx.createOscillator()
+      const lfoG = ctx.createGain()
+      lfo.frequency.value = 6; lfoG.gain.value = 10
+      lfo.connect(lfoG); lfoG.connect(osc.frequency)
+      const t = ctx.currentTime + i * dur
+      g.gain.setValueAtTime(0.3, t)
+      g.gain.linearRampToValueAtTime(0.35, t + 0.05)
+      g.gain.exponentialRampToValueAtTime(0.01, t + dur * 0.9)
+      osc.connect(g); g.connect(ctx.destination)
+      osc.start(t); osc.stop(t + dur)
+      lfo.start(t); lfo.stop(t + dur)
+    })
+  } catch {}
+}
+
+// Mario-style ascending jingle for Pick Any
+export function playPickAnySound() {
+  try {
+    const ctx = new AudioContext()
+    const notes = [523, 659, 784, 1047, 1319] // C E G C5 E5
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator()
+      const g = ctx.createGain()
+      osc.type = 'square'; osc.frequency.value = freq
+      const t = ctx.currentTime + i * 0.09
+      g.gain.setValueAtTime(0.15, t)
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.08)
+      osc.connect(g); g.connect(ctx.destination)
+      osc.start(t); osc.stop(t + 0.09)
+    })
+  } catch {}
 }

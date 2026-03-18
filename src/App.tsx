@@ -3,14 +3,11 @@ import SetupScreen from './SetupScreen'
 import GameScreen from './GameScreen'
 import { GameState, JEWELRY, JewelryId, Player, PLAYER_COLORS } from './types'
 import { SPINNER_SECTIONS, randomSection } from './spin'
-import { playSpinSound } from './audio'
+import { playSpinSound, playSadSound, playPickAnySound } from './audio'
 
 function initGame(names: string[]): GameState {
   const players: Player[] = names.map((name, i) => ({
-    name,
-    color: PLAYER_COLORS[i],
-    inventory: [],
-    hasBlackRing: false,
+    name, color: PLAYER_COLORS[i], inventory: [], hasBlackRing: false,
   }))
   return { players, currentIndex: 0, phase: 'playing', winner: null, lastSpin: null }
 }
@@ -25,8 +22,7 @@ export default function App() {
 
   function handleStart(names: string[]) {
     setGame(initGame(names))
-    setIsSpinning(false)
-    setSpinTrigger(0)
+    setIsSpinning(false); setSpinTrigger(0)
   }
 
   function handleSpinStart() {
@@ -42,23 +38,18 @@ export default function App() {
     const section = SPINNER_SECTIONS[pendingSection]
 
     if (section.action === 'pickAny') {
+      playPickAnySound()
       const current = game!.players[game!.currentIndex]
       const missing = JEWELRY.filter(j => !current.inventory.includes(j))
-      if (missing.length === 0) {
-        advanceTurn(`${current.name} has everything — nothing to pick! ⭐`)
-      } else {
-        setPickAnyPending(true)
-      }
+      if (missing.length === 0) { advanceTurn(`${current.name} already has everything! ⭐`); return }
+      setPickAnyPending(true)
       return
     }
 
     if (section.action === 'putBackChoice') {
       const current = game!.players[game!.currentIndex]
-      if (current.inventory.length === 0) {
-        advanceTurn(`${current.name} has nothing to return! ↩️`)
-      } else {
-        setPutBackChoicePending(true)
-      }
+      if (current.inventory.length === 0) { advanceTurn(`${current.name} has nothing to return! ↩️`); return }
+      setPutBackChoicePending(true)
       return
     }
 
@@ -69,6 +60,7 @@ export default function App() {
       let lastSpin: string
 
       if (section.action === 'blackRing') {
+        playSadSound()
         players.forEach(p => { p.hasBlackRing = false })
         current.hasBlackRing = true
         lastSpin = `${current.name} got the Black Ring! ⚫`
@@ -136,28 +128,18 @@ export default function App() {
   }
 
   function handleNewGame() {
-    setGame(null)
-    setIsSpinning(false)
-    setSpinTrigger(0)
-    setPickAnyPending(false)
-    setPutBackChoicePending(false)
+    setGame(null); setIsSpinning(false); setSpinTrigger(0)
+    setPickAnyPending(false); setPutBackChoicePending(false)
   }
 
   if (!game) return <SetupScreen onStart={handleStart} />
 
   return (
     <GameScreen
-      game={game}
-      isSpinning={isSpinning}
-      spinTrigger={spinTrigger}
-      pendingSection={pendingSection}
-      pickAnyPending={pickAnyPending}
-      putBackChoicePending={putBackChoicePending}
-      onSpinStart={handleSpinStart}
-      onSpinComplete={handleSpinComplete}
-      onPickAny={handlePickAny}
-      onPutBackChoice={handlePutBackChoice}
-      onNewGame={handleNewGame}
+      game={game} isSpinning={isSpinning} spinTrigger={spinTrigger} pendingSection={pendingSection}
+      pickAnyPending={pickAnyPending} putBackChoicePending={putBackChoicePending}
+      onSpinStart={handleSpinStart} onSpinComplete={handleSpinComplete}
+      onPickAny={handlePickAny} onPutBackChoice={handlePutBackChoice} onNewGame={handleNewGame}
     />
   )
 }
