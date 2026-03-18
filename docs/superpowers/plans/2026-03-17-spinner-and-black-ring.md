@@ -4,7 +4,7 @@
 
 **Goal:** Add an animated SVG spinner wheel and black ring mechanic to Pretty Pretty Princess, making it faithful to the physical board game.
 
-**Architecture:** Rewrite `types.ts` with typed enums and a `lastSpinMessage` string for display, extract a pure `applySpinResult` function in `gameLogic.ts` for unit-tested game logic, build a self-contained `Spinner.tsx` SVG component that fires `onSpinComplete`, and wire everything in `App.tsx` + `GameScreen.tsx`. Delete `spin.ts` only after `App.tsx` no longer imports it.
+**Architecture:** Rewrite `types.ts` with typed enums and a `lastSpinMessage` string for display, extract a pure `applySpinResult` function in `gameLogic.ts` for unit-tested game logic, build a self-contained `Spinner.tsx` SVG component that fires `onSpinComplete` via `transitionend`, and wire everything in `App.tsx` + `GameScreen.tsx`. Delete `spin.ts` only after `App.tsx` no longer imports it.
 
 **Tech Stack:** Vite 5, React 18, TypeScript 5, Vitest (added for logic tests)
 
@@ -18,11 +18,11 @@
 |------|--------|---------------|
 | `src/types.ts` | Rewrite | All shared types, constants, enums |
 | `src/gameLogic.ts` | Create | Pure `applySpinResult` function (no React) |
-| `src/Spinner.tsx` | Create | SVG animated wheel, fires `onSpinComplete` |
+| `src/Spinner.tsx` | Create | SVG animated wheel, fires `onSpinComplete` via transitionend |
 | `src/GameScreen.tsx` | Modify | Integrate Spinner, player colors, ⚫ indicator, result message |
-| `src/App.tsx` | Modify | Wire `handleSpin`, `spinning` state, `initGame` |
+| `src/App.tsx` | Modify | Wire `handleSpinStart`, `handleSpinComplete`, `spinning` state, `initGame` |
 | `src/SetupScreen.tsx` | Minor | Update subtitle emoji to match new jewelry set |
-| `src/spin.ts` | Delete | **Only after App.tsx is rewritten** |
+| `src/spin.ts` | Delete | **Only after App.tsx is rewritten (Task 5)** |
 | `src/gameLogic.test.ts` | Create | Unit tests for `applySpinResult` |
 | `vite.config.ts` | Modify | Add vitest config |
 | `package.json` | Modify | Add vitest dev dependency + test script |
@@ -77,7 +77,7 @@ export default defineConfig({
 ```bash
 npm test
 ```
-Expected: "No test files found" — not an error, this is correct.
+Expected: "No test files found" — not an error.
 
 - [ ] **Step 6: Commit**
 
@@ -93,7 +93,7 @@ git commit -m "chore: add vitest"
 **Files:**
 - Modify: `src/types.ts`
 
-Note: `JEWELRY` changes from emoji strings to string IDs. Every place the old code renders inventory as `.join(' ')` will break — that is fixed in Task 6 (GameScreen). Do Tasks 2 and 6 before running the dev server.
+Note: `JEWELRY` changes from emoji strings to string IDs. Every place the old code renders inventory as `.join(' ')` breaks — fixed in Task 6. Do Tasks 2 and 6 before running the dev server.
 
 - [ ] **Step 1: Replace `src/types.ts` entirely**
 
@@ -127,12 +127,12 @@ export interface GameState {
   phase: 'playing' | 'won'
   winner: number | null
   lastSpin: SpinOutcome | null   // null only before first spin; never cleared
-  lastSpinMessage: string | null // pre-rendered display string (e.g. "Alice got 👑!")
-  spinning: boolean              // true during spinner animation
+  lastSpinMessage: string | null // pre-rendered display string, e.g. "Alice got 👑!"
+  spinning: boolean              // true while Spinner is animating
 }
 ```
 
-- [ ] **Step 2: Verify TypeScript (expect errors in App.tsx, GameScreen.tsx — fix in later tasks)**
+- [ ] **Step 2: Verify TypeScript (errors in App.tsx/GameScreen.tsx expected — fixed later)**
 
 ```bash
 npx tsc --noEmit 2>&1 | head -20
@@ -153,7 +153,7 @@ git commit -m "refactor: rewrite types with SpinOutcome, blackRingHolder, lastSp
 - Create: `src/gameLogic.test.ts`
 - Create: `src/gameLogic.ts`
 
-`applySpinResult` is a pure function: takes a `GameState` and a `SpinOutcome`, returns the next `GameState`. No React, no side effects. All game rules live here.
+`applySpinResult` is a pure function: takes a `GameState` and a `SpinOutcome`, returns the next `GameState`. All game rules live here.
 
 ### 3a — Write failing tests first, commit them red
 
@@ -232,9 +232,9 @@ describe('applySpinResult — black ring', () => {
   it('is a no-op if current player already holds black ring — state unchanged except turn advance', () => {
     const state = makeGame({ blackRingHolder: 0 })
     const next = applySpinResult(state, 'black_ring')
-    expect(next.blackRingHolder).toBe(0)         // still holder
-    expect(next.players).toEqual(state.players)   // no player state changed
-    expect(next.currentIndex).toBe(1)             // turn still advances
+    expect(next.blackRingHolder).toBe(0)
+    expect(next.players).toEqual(state.players)
+    expect(next.currentIndex).toBe(1) // turn still advances
   })
 })
 
@@ -284,7 +284,7 @@ describe('applySpinResult — win condition', () => {
     const state = makeGame({
       players: [
         { name: 'Alice', inventory: ['ring', 'necklace', 'earrings', 'bracelet'] },
-        { name: 'Bob', inventory: ['crown'] }, // Alice will steal it
+        { name: 'Bob', inventory: ['crown'] },
         { name: 'Carol', inventory: [] },
       ],
     })
@@ -303,7 +303,7 @@ npm test
 ```
 Expected: all tests fail with "Cannot find module './gameLogic'"
 
-- [ ] **Step 3: Commit failing tests (TDD red phase)**
+- [ ] **Step 3: Commit failing tests (TDD red)**
 
 ```bash
 git add src/gameLogic.test.ts
@@ -331,7 +331,6 @@ export function applySpinResult(state: GameState, result: SpinOutcome): GameStat
   } else {
     const alreadyOwned = current.inventory.includes(result)
     if (!alreadyOwned) {
-      // Remove from another player if they hold it
       for (const player of players) {
         const idx = player.inventory.indexOf(result)
         if (idx !== -1) {
@@ -360,7 +359,6 @@ export function applySpinResult(state: GameState, result: SpinOutcome): GameStat
     }
   }
 
-  // Advance turn
   const nextIndex = (state.currentIndex + 1) % state.players.length
   return {
     ...state,
@@ -395,7 +393,12 @@ git commit -m "feat: implement applySpinResult"
 **Files:**
 - Create: `src/Spinner.tsx`
 
-No unit tests — visual component. Verify in browser during Task 7.
+Key implementation notes:
+- Uses `transitionend` event (not `setTimeout`) so it fires exactly when the animation finishes
+- Rotation math accounts for accumulated rotation state to ensure correct wedge targeting
+- Local `spinning` state prevents double-tap regardless of parent re-render timing
+- `unmountedRef` prevents calling `onSpinComplete` after component unmounts
+- `onSpinStart` prop is called immediately on tap so parent can set `spinning: true` in GameState
 
 - [ ] **Step 1: Create `src/Spinner.tsx`**
 
@@ -404,17 +407,18 @@ import { useRef, useState, useEffect } from 'react'
 import { SPIN_OUTCOMES, SpinOutcome, JEWELRY_EMOJI } from './types'
 
 interface SpinnerProps {
+  onSpinStart: () => void
   onSpinComplete: (result: SpinOutcome) => void
   disabled: boolean
 }
 
 const WEDGE_COLORS = [
-  '#f48fb1', // crown
-  '#ce93d8', // ring
-  '#4db6ac', // bracelet
-  '#ffd54f', // earrings
-  '#81d4fa', // necklace
-  '#424242', // black_ring
+  '#f48fb1', // crown — rose pink
+  '#ce93d8', // ring — lavender
+  '#4db6ac', // bracelet — teal
+  '#ffd54f', // earrings — gold
+  '#81d4fa', // necklace — sky blue
+  '#424242', // black_ring — dark
 ]
 
 const WEDGE_EMOJI = SPIN_OUTCOMES.map(o =>
@@ -425,7 +429,7 @@ const SIZE = 260
 const CX = SIZE / 2
 const CY = SIZE / 2
 const R = SIZE / 2 - 4
-const WEDGE_ANGLE = 360 / SPIN_OUTCOMES.length
+const WEDGE_ANGLE = 360 / SPIN_OUTCOMES.length // 60°
 
 function polarToCart(cx: number, cy: number, r: number, angleDeg: number) {
   const rad = ((angleDeg - 90) * Math.PI) / 180
@@ -439,9 +443,10 @@ function wedgePath(cx: number, cy: number, r: number, startAngle: number, endAng
   return `M${cx},${cy} L${start.x},${start.y} A${r},${r} 0 ${largeArc} 1 ${end.x},${end.y} Z`
 }
 
-export default function Spinner({ onSpinComplete, disabled }: SpinnerProps) {
+export default function Spinner({ onSpinStart, onSpinComplete, disabled }: SpinnerProps) {
   const [rotation, setRotation] = useState(0)
   const [spinning, setSpinning] = useState(false)
+  const wheelRef = useRef<SVGGElement>(null)
   const unmountedRef = useRef(false)
 
   useEffect(() => {
@@ -454,24 +459,33 @@ export default function Spinner({ onSpinComplete, disabled }: SpinnerProps) {
     const resultIndex = Math.floor(Math.random() * SPIN_OUTCOMES.length)
     const result = SPIN_OUTCOMES[resultIndex]
 
-    // Wedge i center is at (i * 60 + 30) degrees from top.
-    // To land under the top needle, rotate so that center goes to 0°.
+    // Wedge i center sits at (i * 60 + 30)° in wheel-space (0° = 12 o'clock).
+    // Needle is fixed at 12 o'clock. We need wedge center to land at 0°.
+    // Account for accumulated rotation so each spin builds on the last.
     const wedgeCenter = resultIndex * WEDGE_ANGLE + WEDGE_ANGLE / 2
-    const targetRotation = rotation + (5 * 360) + (360 - (wedgeCenter % 360))
+    const currentAngle = rotation % 360
+    const degreesToTarget = (360 - ((wedgeCenter + currentAngle) % 360)) % 360
+    const targetRotation = rotation + 5 * 360 + degreesToTarget
 
     setSpinning(true)
+    onSpinStart()
     setRotation(targetRotation)
 
-    setTimeout(() => {
+    const el = wheelRef.current
+    if (!el) return
+
+    const onEnd = () => {
+      el.removeEventListener('transitionend', onEnd)
       if (unmountedRef.current) return
       setSpinning(false)
       onSpinComplete(result)
-    }, 2500)
+    }
+    el.addEventListener('transitionend', onEnd)
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-      {/* Needle */}
+      {/* Needle — fixed triangle pointing down into the wheel rim */}
       <div style={{
         width: 0,
         height: 0,
@@ -486,6 +500,7 @@ export default function Spinner({ onSpinComplete, disabled }: SpinnerProps) {
       {/* Wheel */}
       <svg width={SIZE} height={SIZE} style={{ display: 'block' }}>
         <g
+          ref={wheelRef}
           style={{
             transformOrigin: `${CX}px ${CY}px`,
             transform: `rotate(${rotation}deg)`,
@@ -561,7 +576,7 @@ Expected: no errors
 
 ```bash
 git add src/Spinner.tsx
-git commit -m "feat: add SVG animated spinner"
+git commit -m "feat: add SVG animated spinner with transitionend"
 ```
 
 ---
@@ -571,7 +586,7 @@ git commit -m "feat: add SVG animated spinner"
 **Files:**
 - Modify: `src/App.tsx`
 
-Note: this task removes the `spin` import from `./spin`. Do not delete `spin.ts` yet — do that in Task 7.
+This removes the `spin` import from `./spin`. Do **not** delete `spin.ts` yet — that is Task 7.
 
 - [ ] **Step 1: Rewrite `src/App.tsx`**
 
@@ -602,6 +617,12 @@ export default function App() {
     setGame(initGame(players))
   }
 
+  // Called immediately on tap — sets spinning:true so Spinner's disabled prop updates
+  function handleSpinStart() {
+    setGame(prev => prev ? { ...prev, spinning: true } : prev)
+  }
+
+  // Called after animation completes via transitionend
   function handleSpinComplete(result: SpinOutcome) {
     setGame(prev => {
       if (!prev || prev.phase !== 'playing') return prev
@@ -620,6 +641,7 @@ export default function App() {
   return (
     <GameScreen
       game={game}
+      onSpinStart={handleSpinStart}
       onSpinComplete={handleSpinComplete}
       onNewGame={handleNewGame}
     />
@@ -627,7 +649,7 @@ export default function App() {
 }
 ```
 
-- [ ] **Step 2: Verify TypeScript (GameScreen errors expected — fixed in Task 6)**
+- [ ] **Step 2: Verify TypeScript (GameScreen prop errors expected — fixed in Task 6)**
 
 ```bash
 npx tsc --noEmit 2>&1 | grep -v GameScreen
@@ -637,7 +659,7 @@ npx tsc --noEmit 2>&1 | grep -v GameScreen
 
 ```bash
 git add src/App.tsx
-git commit -m "feat: wire applySpinResult into App.tsx"
+git commit -m "feat: wire applySpinResult and handleSpinStart into App.tsx"
 ```
 
 ---
@@ -656,11 +678,12 @@ import Spinner from './Spinner'
 
 interface Props {
   game: GameState
+  onSpinStart: () => void
   onSpinComplete: (result: SpinOutcome) => void
   onNewGame: () => void
 }
 
-export default function GameScreen({ game, onSpinComplete, onNewGame }: Props) {
+export default function GameScreen({ game, onSpinStart, onSpinComplete, onNewGame }: Props) {
   if (game.phase === 'won' && game.winner !== null) {
     const winner = game.players[game.winner]
     return (
@@ -683,7 +706,6 @@ export default function GameScreen({ game, onSpinComplete, onNewGame }: Props) {
   }
 
   const playerColor = PLAYER_COLORS[game.currentIndex]
-  const currentName = game.players[game.currentIndex].name
 
   return (
     <div style={{ textAlign: 'center' }}>
@@ -697,17 +719,18 @@ export default function GameScreen({ game, onSpinComplete, onNewGame }: Props) {
       }}>
         <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 4 }}>It's your turn!</div>
         <div style={{ fontSize: 28, fontWeight: 'bold' }}>
-          {PLAYER_EMOJIS[game.currentIndex]} {currentName}
+          {PLAYER_EMOJIS[game.currentIndex]} {game.players[game.currentIndex].name}
         </div>
       </div>
 
       {/* Spinner */}
       <Spinner
+        onSpinStart={onSpinStart}
         onSpinComplete={onSpinComplete}
         disabled={game.spinning}
       />
 
-      {/* Last spin result — uses pre-rendered message from gameLogic */}
+      {/* Last spin result — pre-rendered in gameLogic, safe to display directly */}
       {game.lastSpinMessage && (
         <div style={{
           marginTop: 16,
@@ -783,7 +806,7 @@ function bigBtn(bg: string): React.CSSProperties {
 
 - [ ] **Step 2: Update subtitle in `src/SetupScreen.tsx`**
 
-Find the line:
+Find this line:
 ```tsx
 Collect all 5 jewels to win! 💍📿💎✨
 ```
@@ -819,7 +842,7 @@ git commit -m "feat: update GameScreen with Spinner, player colors, black ring i
 **Files:**
 - Delete: `src/spin.ts`
 
-`spin.ts` is now safe to delete — `App.tsx` no longer imports it.
+Safe to delete — `App.tsx` no longer imports it after Task 5.
 
 - [ ] **Step 1: Delete `src/spin.ts`**
 
@@ -852,12 +875,12 @@ Open `http://localhost:5173` and check:
 - [ ] Game starts; turn banner shows correct player color
 - [ ] Tapping Spin triggers wheel animation (~2.5s)
 - [ ] Button shows "Spinning…" and is disabled during animation
-- [ ] Result message appears after wheel settles (correct player name)
-- [ ] Jewel appears in current player's inventory row
+- [ ] Result message appears after wheel settles (correct player name, correct jewel emoji)
+- [ ] Jewel appears in the spinning player's inventory row
 - [ ] Spinning a jewel another player holds steals it from them
-- [ ] Landing on ⚫ shows black ring (⚫) next to that player's name
-- [ ] Landing on ⚫ when already holding it does nothing visible
-- [ ] Winning player (all 5 jewels, no black ring) triggers win screen immediately
+- [ ] Landing on ⚫ shows ⚫ next to that player's name
+- [ ] Landing on ⚫ when already holding it does nothing
+- [ ] Winning player (all 5 jewels, no ⚫) triggers win screen immediately
 - [ ] Win screen shows correct winner name + 5 jewelry emojis
 - [ ] Play Again resets to setup screen
 
@@ -872,7 +895,7 @@ git commit -m "chore: remove spin.ts"
 
 ## Task 8: Push to GitHub
 
-- [ ] **Step 1: Push**
+- [ ] **Step 1: Push all commits**
 
 ```bash
 git push origin main
