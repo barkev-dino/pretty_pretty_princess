@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import SetupScreen from './SetupScreen'
 import GameScreen from './GameScreen'
-import { GameState, JEWELRY, JewelryId, Player, PLAYER_COLORS } from './types'
+import { GameState, JEWELRY, JewelryId, Player, Character } from './types'
 import { SPINNER_SECTIONS, randomSection } from './spin'
 import { playSpinSound, playSadSound, playPickAnySound } from './audio'
 
-function initGame(names: string[]): GameState {
-  const players: Player[] = names.map((name, i) => ({
-    name, color: PLAYER_COLORS[i], inventory: [], hasBlackRing: false,
+function initGame(selections: { name: string; character: Character }[]): GameState {
+  const players: Player[] = selections.map(({ name, character }) => ({
+    name, character, color: character.color, inventory: [], hasBlackRing: false,
   }))
   return { players, currentIndex: 0, phase: 'playing', winner: null, lastSpin: null }
 }
@@ -20,8 +20,8 @@ export default function App() {
   const [pickAnyPending, setPickAnyPending] = useState(false)
   const [putBackChoicePending, setPutBackChoicePending] = useState(false)
 
-  function handleStart(names: string[]) {
-    setGame(initGame(names))
+  function handleStart(selections: { name: string; character: Character }[]) {
+    setGame(initGame(selections))
     setIsSpinning(false); setSpinTrigger(0)
   }
 

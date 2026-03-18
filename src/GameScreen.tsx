@@ -27,7 +27,7 @@ export default function GameScreen({
     const winner = game.players[game.winner]
     return (
       <div style={{ textAlign: 'center', paddingTop: 40 }}>
-        <div style={{ fontSize: 72, marginBottom: 16 }}>👑</div>
+        <div style={{ fontSize: 72, marginBottom: 16 }}>{winner.character.emoji}</div>
         <h2 style={{ fontSize: 32, color: winner.color, marginBottom: 8 }}>{winner.name} Wins!</h2>
         <p style={{ fontSize: 18, color: '#9c27b0', marginBottom: 32 }}>Collected all 5 jewels!</p>
         <div style={{ fontSize: 32, marginBottom: 32 }}>{winner.inventory.join(' ')}</div>
@@ -53,7 +53,7 @@ export default function GameScreen({
         borderRadius: 20, padding: '14px 24px', marginBottom: 12, color: '#fff',
       }}>
         <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 4 }}>It's your turn!</div>
-        <div style={{ fontSize: 26, fontWeight: 'bold' }}>{current.name}</div>
+        <div style={{ fontSize: 26, fontWeight: 'bold' }}>{current.character.emoji} {current.name}</div>
       </div>
 
       <Spinner spinTrigger={spinTrigger} targetSection={pendingSection} onSpinComplete={onSpinComplete} />
@@ -99,7 +99,7 @@ export default function GameScreen({
             background: i === game.currentIndex ? `${p.color}22` : 'rgba(255,255,255,0.5)',
             border: `2px solid ${i === game.currentIndex ? p.color : 'transparent'}`,
           }}>
-            <div style={{ width: 10, height: 10, borderRadius: '50%', background: p.color, flexShrink: 0 }} />
+            <span style={{ fontSize: 18, flexShrink: 0 }}>{p.character.emoji}</span>
             <span style={{ fontWeight: 'bold', color: p.color, minWidth: 72, textAlign: 'left', fontSize: 14 }}>
               {p.name}
             </span>

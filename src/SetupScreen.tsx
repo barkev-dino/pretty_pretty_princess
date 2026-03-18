@@ -1,7 +1,13 @@
 import { useState } from 'react'
+import { CHARACTERS, Character } from './types'
+
+interface Selection {
+  name: string
+  character: Character
+}
 
 interface Props {
-  onStart: (names: string[]) => void
+  onStart: (selections: Selection[]) => void
 }
 
 const BTN: React.CSSProperties = {
@@ -29,9 +35,7 @@ const INPUT: React.CSSProperties = {
 export default function SetupScreen({ onStart }: Props) {
   const [count, setCount] = useState<2 | 3 | null>(null)
   const [names, setNames] = useState(['', '', ''])
-
-  const playerNames = count ? names.slice(0, count) : []
-  const canStart = count !== null && playerNames.every(n => n.trim().length > 0)
+  const [selectedChars, setSelectedChars] = useState<(Character | null)[]>([null, null, null])
 
   function handleCountSelect(n: 2 | 3) {
     setCount(n)
@@ -42,11 +46,47 @@ export default function SetupScreen({ onStart }: Props) {
       if (n === 3 && !next[2]) next[2] = 'Player 3'
       return next
     })
+    setSelectedChars(prev => {
+      const next: (Character | null)[] = [null, null, null]
+      for (let i = 0; i < n; i++) {
+        const taken = new Set(next.slice(0, i).filter(Boolean).map(c => c!.emoji))
+        const existing = prev[i]
+        if (existing && !taken.has(existing.emoji)) {
+          next[i] = existing
+        } else {
+          next[i] = CHARACTERS.find(c => !taken.has(c.emoji)) ?? null
+        }
+      }
+      return next
+    })
   }
+
+  function handleCharSelect(slotIndex: number, char: Character) {
+    setSelectedChars(prev => {
+      const next = [...prev]
+      next[slotIndex] = char
+      return next
+    })
+  }
+
+  const activeCount = count ?? 0
+  const takenEmojis = new Set(
+    selectedChars.slice(0, activeCount).filter(Boolean).map(c => c!.emoji)
+  )
+
+  const playerNames = count ? names.slice(0, count) : []
+  const playerChars = count ? selectedChars.slice(0, count) : []
+  const canStart = count !== null
+    && playerNames.every(n => n.trim().length > 0)
+    && playerChars.every(c => c !== null)
 
   function handleStart() {
     if (!canStart || count === null) return
-    onStart(playerNames.map(n => n.trim()))
+    const selections: Selection[] = playerNames.map((name, i) => ({
+      name: name.trim(),
+      character: playerChars[i]!,
+    }))
+    onStart(selections)
   }
 
   return (
@@ -79,24 +119,55 @@ export default function SetupScreen({ onStart }: Props) {
 
       {count !== null && (
         <div style={{ marginBottom: 32 }}>
-          <p style={{ fontSize: 18, color: '#6a1b9a', marginBottom: 16, fontWeight: 'bold' }}>Enter names</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {Array.from({ length: count }, (_, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 22, width: 32 }}>{['💜', '💗', '💙'][i]}</span>
-                <input
-                  style={INPUT}
-                  value={names[i]}
-                  onChange={e => {
-                    const next = [...names]
-                    next[i] = e.target.value
-                    setNames(next)
-                  }}
-                  placeholder={`Player ${i + 1}`}
-                  maxLength={20}
-                />
-              </div>
-            ))}
+          <p style={{ fontSize: 18, color: '#6a1b9a', marginBottom: 16, fontWeight: 'bold' }}>Pick your character</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {Array.from({ length: count }, (_, i) => {
+              const selected = selectedChars[i]
+              return (
+                <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                    {CHARACTERS.map(char => {
+                      const isSelected = selected?.emoji === char.emoji
+                      const isTaken = !isSelected && takenEmojis.has(char.emoji)
+                      return (
+                        <button
+                          key={char.emoji}
+                          onClick={() => !isTaken && handleCharSelect(i, char)}
+                          disabled={isTaken}
+                          style={{
+                            fontSize: 28,
+                            width: 52,
+                            height: 52,
+                            borderRadius: '50%',
+                            border: isSelected ? `3px solid ${char.color}` : '2px solid #e0e0e0',
+                            background: isSelected ? `${char.color}33` : 'rgba(255,255,255,0.8)',
+                            cursor: isTaken ? 'not-allowed' : 'pointer',
+                            opacity: isTaken ? 0.3 : 1,
+                            transform: isSelected ? 'scale(1.15)' : 'scale(1)',
+                            transition: 'transform 0.1s',
+                            padding: 0,
+                            lineHeight: 1,
+                          }}
+                        >
+                          {char.emoji}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <input
+                    style={INPUT}
+                    value={names[i]}
+                    onChange={e => {
+                      const next = [...names]
+                      next[i] = e.target.value
+                      setNames(next)
+                    }}
+                    placeholder={`Player ${i + 1}`}
+                    maxLength={20}
+                  />
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
