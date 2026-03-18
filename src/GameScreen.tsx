@@ -78,6 +78,19 @@ export default function GameScreen({
 
   return (
     <div style={{ textAlign: 'center' }}>
+      <style>{`
+        @keyframes turnIn {
+          0%   { opacity: 0.4; transform: translateY(-8px) scale(0.97); }
+          60%  { transform: translateY(2px) scale(1.03); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes passTextFade {
+          0%   { opacity: 0; }
+          15%  { opacity: 1; }
+          65%  { opacity: 1; }
+          100% { opacity: 0; }
+        }
+      `}</style>
       {pickAnyPending && (
         <Modal title="⭐ Pick any jewel!" items={missingJewels} onSelect={onPickAny} />
       )}
@@ -86,10 +99,17 @@ export default function GameScreen({
       )}
 
       {/* Turn banner */}
-      <div style={{
-        background: `linear-gradient(135deg, ${current.color}cc, ${current.color}88)`,
-        borderRadius: 20, padding: '14px 24px', marginBottom: 12, color: '#fff',
-      }}>
+      <div
+        key={game.currentIndex}
+        style={{
+          background: `linear-gradient(135deg, ${current.color}cc, ${current.color}88)`,
+          borderRadius: 20, padding: '14px 24px', marginBottom: 12, color: '#fff',
+          animation: 'turnIn 0.45s ease-out',
+        }}
+      >
+        <div style={{ fontSize: 13, marginBottom: 2, animation: 'passTextFade 2s linear forwards' }}>
+          👋 Pass to {current.name}!
+        </div>
         <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 4 }}>It's your turn!</div>
         <div style={{ fontSize: 26, fontWeight: 'bold' }}>{current.character.emoji} {current.name}</div>
       </div>
