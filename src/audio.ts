@@ -60,6 +60,29 @@ export function playSadSound() {
   } catch {}
 }
 
+// Triumphant ascending fanfare for win
+export function playWinSound() {
+  try {
+    const ctx = new AudioContext()
+    const notes = [523, 659, 784, 1047, 1319, 1568] // C5 E5 G5 C6 E6 G6
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.type = 'triangle'
+      osc.frequency.value = freq
+      const start = ctx.currentTime + i * 0.17
+      gain.gain.setValueAtTime(0, start)
+      gain.gain.linearRampToValueAtTime(0.4, start + 0.01)
+      gain.gain.setValueAtTime(0.4, start + 0.13)
+      gain.gain.linearRampToValueAtTime(0, start + 0.17)
+      osc.start(start)
+      osc.stop(start + 0.17)
+    })
+  } catch {}
+}
+
 // Mario-style ascending jingle for Pick Any
 export function playPickAnySound() {
   try {

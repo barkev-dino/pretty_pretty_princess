@@ -3,7 +3,7 @@ import SetupScreen from './SetupScreen'
 import GameScreen from './GameScreen'
 import { GameState, JEWELRY, JewelryId, Player, Character } from './types'
 import { SPINNER_SECTIONS, randomSection } from './spin'
-import { playSpinSound, playSadSound, playPickAnySound } from './audio'
+import { playSpinSound, playSadSound, playPickAnySound, playWinSound } from './audio'
 
 function initGame(selections: { name: string; character: Character }[]): GameState {
   const players: Player[] = selections.map(({ name, character }) => ({
@@ -82,6 +82,7 @@ export default function App() {
     }
 
     if (current.inventory.length === JEWELRY.length && !current.hasBlackRing) {
+      playWinSound()
       setGame({ ...game, players, phase: 'won', winner: game.currentIndex, lastSpin })
       setIsSpinning(false)
       return
@@ -99,6 +100,7 @@ export default function App() {
     current.inventory.push(jewel)
     const lastSpin = `${current.name} chose ${jewel}! ⭐`
     if (current.inventory.length === JEWELRY.length && !current.hasBlackRing) {
+      playWinSound()
       setGame({ ...game, players, phase: 'won', winner: game.currentIndex, lastSpin })
       setIsSpinning(false)
       return

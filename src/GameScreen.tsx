@@ -1,5 +1,6 @@
+import { useMemo } from 'react'
 import Spinner from './Spinner'
-import { GameState, JEWELRY, JewelryId } from './types'
+import { GameState, JEWELRY, JewelryId, Player } from './types'
 import { SPINNER_SECTIONS } from './spin'
 
 interface Props {
@@ -16,6 +17,51 @@ interface Props {
   onNewGame: () => void
 }
 
+const CONFETTI_EMOJIS = ['👑', '✨', '💍', '⭐', '🌟', '💫', '🎉', '🎊']
+
+function WinScreen({ winner, onNewGame }: { winner: Player; onNewGame: () => void }) {
+  const particles = useMemo(() => (
+    Array.from({ length: 25 }, (_, i) => ({
+      id: i,
+      emoji: CONFETTI_EMOJIS[Math.floor(Math.random() * CONFETTI_EMOJIS.length)],
+      left: Math.random() * 95,
+      size: 18 + Math.floor(Math.random() * 18),
+      duration: 2.5 + Math.random() * 2,
+      delay: Math.random() * 2,
+    }))
+  ), [])
+
+  return (
+    <div style={{ textAlign: 'center', paddingTop: 40, position: 'relative' }}>
+      <style>{`
+        @keyframes confettiFall {
+          0%   { transform: translateY(-60px) rotate(0deg); opacity: 1; }
+          100% { transform: translateY(110vh) rotate(360deg); opacity: 0.3; }
+        }
+      `}</style>
+      {particles.map(p => (
+        <div key={p.id} style={{
+          position: 'fixed',
+          left: `${p.left}%`,
+          top: 0,
+          fontSize: p.size,
+          animation: `confettiFall ${p.duration}s ${p.delay}s linear infinite`,
+          pointerEvents: 'none',
+          zIndex: 200,
+          userSelect: 'none',
+        }}>{p.emoji}</div>
+      ))}
+      <div style={{ fontSize: 72, marginBottom: 16 }}>{winner.character.emoji}</div>
+      <h2 style={{ fontSize: 32, color: winner.color, marginBottom: 8 }}>{winner.name} Wins!</h2>
+      <p style={{ fontSize: 18, color: '#9c27b0', marginBottom: 32 }}>Collected all 5 jewels!</p>
+      <div style={{ fontSize: 32, marginBottom: 32 }}>{winner.inventory.join(' ')}</div>
+      <button onClick={onNewGame} style={{ ...bigBtn('#ce93d8'), touchAction: 'manipulation' }}>
+        Play Again 🎉
+      </button>
+    </div>
+  )
+}
+
 export default function GameScreen({
   game, isSpinning, spinTrigger, pendingSection,
   pickAnyPending, putBackChoicePending,
@@ -25,15 +71,7 @@ export default function GameScreen({
 
   if (game.phase === 'won' && game.winner !== null) {
     const winner = game.players[game.winner]
-    return (
-      <div style={{ textAlign: 'center', paddingTop: 40 }}>
-        <div style={{ fontSize: 72, marginBottom: 16 }}>{winner.character.emoji}</div>
-        <h2 style={{ fontSize: 32, color: winner.color, marginBottom: 8 }}>{winner.name} Wins!</h2>
-        <p style={{ fontSize: 18, color: '#9c27b0', marginBottom: 32 }}>Collected all 5 jewels!</p>
-        <div style={{ fontSize: 32, marginBottom: 32 }}>{winner.inventory.join(' ')}</div>
-        <button onClick={onNewGame} style={bigBtn('#ce93d8')}>Play Again</button>
-      </div>
-    )
+    return <WinScreen winner={winner} onNewGame={onNewGame} />
   }
 
   const missingJewels = JEWELRY.filter(j => !current.inventory.includes(j))
@@ -58,7 +96,7 @@ export default function GameScreen({
 
       <Spinner spinTrigger={spinTrigger} targetSection={pendingSection} onSpinComplete={onSpinComplete} />
 
-      {/* Legend — icons only, no color swatches */}
+      {/* Legend */}
       <div style={{
         display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
         gap: '3px 6px', margin: '8px 0 10px',
@@ -85,7 +123,10 @@ export default function GameScreen({
       <button
         onClick={onSpinStart}
         disabled={isSpinning}
-        style={bigBtn(isSpinning ? '#e0e0e0' : `linear-gradient(135deg, ${current.color}, #f48fb1)`)}
+        style={{
+          ...bigBtn(isSpinning ? '#e0e0e0' : `linear-gradient(135deg, ${current.color}, #f48fb1)`),
+          touchAction: 'manipulation',
+        }}
       >
         {isSpinning ? 'Spinning...' : 'Spin! ✨'}
       </button>
@@ -103,7 +144,6 @@ export default function GameScreen({
             <span style={{ fontWeight: 'bold', color: p.color, minWidth: 72, textAlign: 'left', fontSize: 14 }}>
               {p.name}
             </span>
-            {/* All jewels: bright if collected, faded if still needed */}
             <span style={{ flex: 1, textAlign: 'left', letterSpacing: 2 }}>
               {JEWELRY.map(j => (
                 <span key={j} style={{
@@ -123,6 +163,7 @@ export default function GameScreen({
       <button onClick={onNewGame} style={{
         marginTop: 18, background: 'none', border: 'none',
         color: '#ab47bc', cursor: 'pointer', fontSize: 14, textDecoration: 'underline',
+        touchAction: 'manipulation',
       }}>New Game</button>
     </div>
   )
@@ -146,6 +187,7 @@ function Modal({ title, items, onSelect }: { title: string; items: readonly Jewe
               fontSize: 38, background: 'rgba(255,255,255,0.85)',
               border: '2px solid #ce93d8', borderRadius: 12,
               padding: '8px 14px', cursor: 'pointer',
+              touchAction: 'manipulation',
             }}>{j}</button>
           ))}
         </div>
