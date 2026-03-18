@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import SetupScreen from './SetupScreen'
 import GameScreen from './GameScreen'
-import HandoffScreen from './HandoffScreen'
 import { GameState, JEWELRY, JewelryId, Player, Character } from './types'
 import { SPINNER_SECTIONS, randomSection } from './spin'
 import { playSpinSound, playSadSound, playPickAnySound } from './audio'
@@ -20,14 +19,6 @@ export default function App() {
   const [spinTrigger, setSpinTrigger] = useState(0)
   const [pickAnyPending, setPickAnyPending] = useState(false)
   const [putBackChoicePending, setPutBackChoicePending] = useState(false)
-  const [handoffPending, setHandoffPending] = useState(false)
-  const [handoffTo, setHandoffTo] = useState<{ name: string; character: Character } | null>(null)
-
-  function triggerHandoff(nextGame: GameState) {
-    const next = nextGame.players[nextGame.currentIndex]
-    setHandoffTo({ name: next.name, character: next.character })
-    setHandoffPending(true)
-  }
 
   function handleStart(selections: { name: string; character: Character }[]) {
     setGame(initGame(selections))
@@ -96,9 +87,7 @@ export default function App() {
       return
     }
     const nextIndex = (game.currentIndex + 1) % game.players.length
-    const nextGame: GameState = { ...game, players, currentIndex: nextIndex, lastSpin }
-    setGame(nextGame)
-    triggerHandoff(nextGame)
+    setGame({ ...game, players, currentIndex: nextIndex, lastSpin })
     setIsSpinning(false)
   }
 
@@ -115,9 +104,7 @@ export default function App() {
       return
     }
     const nextIndex = (game.currentIndex + 1) % game.players.length
-    const nextGame: GameState = { ...game, players, currentIndex: nextIndex, lastSpin }
-    setGame(nextGame)
-    triggerHandoff(nextGame)
+    setGame({ ...game, players, currentIndex: nextIndex, lastSpin })
     setIsSpinning(false)
   }
 
@@ -129,37 +116,23 @@ export default function App() {
     current.inventory = current.inventory.filter(j => j !== jewel)
     const lastSpin = `${current.name} returned ${jewel}! ↩️`
     const nextIndex = (game.currentIndex + 1) % game.players.length
-    const nextGame: GameState = { ...game, players, currentIndex: nextIndex, lastSpin }
-    setGame(nextGame)
-    triggerHandoff(nextGame)
+    setGame({ ...game, players, currentIndex: nextIndex, lastSpin })
     setIsSpinning(false)
   }
 
   function advanceTurn(lastSpin: string) {
     if (!game) return
     const nextIndex = (game.currentIndex + 1) % game.players.length
-    const nextGame: GameState = { ...game, currentIndex: nextIndex, lastSpin }
-    setGame(nextGame)
-    triggerHandoff(nextGame)
+    setGame({ ...game, currentIndex: nextIndex, lastSpin })
     setIsSpinning(false)
-  }
-
-  function handleHandoffDone() {
-    setHandoffPending(false)
-    setHandoffTo(null)
   }
 
   function handleNewGame() {
     setGame(null); setIsSpinning(false); setSpinTrigger(0)
     setPickAnyPending(false); setPutBackChoicePending(false)
-    setHandoffPending(false); setHandoffTo(null)
   }
 
   if (!game) return <SetupScreen onStart={handleStart} />
-
-  if (handoffPending && handoffTo) {
-    return <HandoffScreen player={handoffTo} onReady={handleHandoffDone} />
-  }
 
   return (
     <GameScreen
