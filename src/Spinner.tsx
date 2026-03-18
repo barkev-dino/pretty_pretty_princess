@@ -15,7 +15,8 @@ function toXY(angleDeg: number, r: number) {
 function wedgePath(startDeg: number, endDeg: number): string {
   const s = toXY(startDeg, R)
   const e = toXY(endDeg, R)
-  return `M ${CX} ${CY} L ${s.x.toFixed(2)} ${s.y.toFixed(2)} A ${R} ${R} 0 0 1 ${e.x.toFixed(2)} ${e.y.toFixed(2)} Z`
+  const large = endDeg - startDeg > 180 ? 1 : 0
+  return `M ${CX} ${CY} L ${s.x.toFixed(2)} ${s.y.toFixed(2)} A ${R} ${R} 0 ${large} 1 ${e.x.toFixed(2)} ${e.y.toFixed(2)} Z`
 }
 
 interface Props {
@@ -30,8 +31,9 @@ export default function Spinner({ spinTrigger, targetSection, onSpinComplete }: 
 
   useEffect(() => {
     if (spinTrigger === 0) return
-    const sectionCenter = targetSection * 60 + 30
-    const targetAngle = (360 - sectionCenter) % 360
+    const s = SPINNER_SECTIONS[targetSection]
+    const sectionCenter = (s.startDeg + s.endDeg) / 2
+    const targetAngle = (360 - sectionCenter + 360) % 360
     const currentMod = ((rotation % 360) + 360) % 360
     const delta = (targetAngle - currentMod + 360) % 360
     const newRotation = rotation + delta + 5 * 360
@@ -52,27 +54,20 @@ export default function Spinner({ spinTrigger, targetSection, onSpinComplete }: 
       viewBox={`0 0 ${SIZE} ${SIZE}`}
       style={{ display: 'block', margin: '0 auto' }}
     >
-      {/* Spinning wheel group */}
       <g
         style={{
           transform: `rotate(${rotation}deg)`,
           transformOrigin: `${CX}px ${CY}px`,
-          transition: animating
-            ? 'transform 2.5s cubic-bezier(0.15, 0.85, 0.25, 1)'
-            : 'none',
+          transition: animating ? 'transform 2.5s cubic-bezier(0.15, 0.85, 0.25, 1)' : 'none',
         }}
       >
         {SPINNER_SECTIONS.map((s, i) => (
-          <path
-            key={i}
-            d={wedgePath(i * 60, (i + 1) * 60)}
-            fill={s.color}
-            stroke="#fff"
-            strokeWidth="2.5"
-          />
+          <path key={i} d={wedgePath(s.startDeg, s.endDeg)} fill={s.color} stroke="#fff" strokeWidth="2" />
         ))}
         {SPINNER_SECTIONS.map((s, i) => {
-          const pos = toXY(i * 60 + 30, LABEL_R)
+          const center = (s.startDeg + s.endDeg) / 2
+          const arcSize = s.endDeg - s.startDeg
+          const pos = toXY(center, LABEL_R)
           return (
             <text
               key={i}
@@ -80,7 +75,7 @@ export default function Spinner({ spinTrigger, targetSection, onSpinComplete }: 
               y={pos.y}
               textAnchor="middle"
               dominantBaseline="middle"
-              fontSize="28"
+              fontSize={arcSize <= 30 ? '14' : '24'}
             >
               {s.emoji}
             </text>
@@ -88,17 +83,8 @@ export default function Spinner({ spinTrigger, targetSection, onSpinComplete }: 
         })}
         <circle cx={CX} cy={CY} r={14} fill="#fff" stroke="#e0e0e0" strokeWidth="2" />
       </g>
-
-      {/* Fixed outer border ring */}
       <circle cx={CX} cy={CY} r={R + 4} fill="none" stroke="#9c27b0" strokeWidth="4" />
-
-      {/* Fixed needle — downward triangle at top center */}
-      <polygon
-        points={`${CX - 11},3 ${CX + 11},3 ${CX},22`}
-        fill="#c62828"
-        stroke="#fff"
-        strokeWidth="1.5"
-      />
+      <polygon points={`${CX - 11},3 ${CX + 11},3 ${CX},22`} fill="#c62828" stroke="#fff" strokeWidth="1.5" />
     </svg>
   )
 }
