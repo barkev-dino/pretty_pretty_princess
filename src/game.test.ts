@@ -51,9 +51,21 @@ describe('SPINNER_SECTIONS', () => {
     expect(SPINNER_SECTIONS.length).toBe(9)
   })
 
-  it('each section spans exactly 40°', () => {
-    for (const s of SPINNER_SECTIONS) {
-      expect(s.endDeg - s.startDeg).toBe(40)
+  it('positive sections span 45° each', () => {
+    const positive = SPINNER_SECTIONS.filter(
+      s => s.action !== 'putBackChoice' && s.action !== 'putBackRandom'
+    )
+    for (const s of positive) {
+      expect(s.endDeg - s.startDeg).toBe(45)
+    }
+  })
+
+  it('negative sections (putBackChoice, putBackRandom) span 22.5° each', () => {
+    const negative = SPINNER_SECTIONS.filter(
+      s => s.action === 'putBackChoice' || s.action === 'putBackRandom'
+    )
+    for (const s of negative) {
+      expect(s.endDeg - s.startDeg).toBe(22.5)
     }
   })
 
@@ -126,9 +138,9 @@ describe('randomSection', () => {
     }
   })
 
-  it('returns every section index at least once in 500 calls (distribution check)', () => {
+  it('returns every section index at least once in 1000 calls', () => {
     const seen = new Set<number>()
-    for (let i = 0; i < 500; i++) seen.add(randomSection())
+    for (let i = 0; i < 1000; i++) seen.add(randomSection())
     expect(seen.size).toBe(SPINNER_SECTIONS.length)
   })
 })
