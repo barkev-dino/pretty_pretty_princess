@@ -408,7 +408,123 @@ const PROJECT_DATA = {
 </div>
 
 <script>
-// ── Engine injected in Task 2 ──
+// ── Gate logic ──────────────────────────────────────────────
+
+const GATES = ['SRR', 'PDR', 'CDR', 'TRR', 'PRR']
+
+const GATE_STYLE = {
+  PRR:  { border: '#22c55e', bg: '#0a2d1a', label: '#86efac' },
+  TRR:  { border: '#eab308', bg: '#2d2a0a', label: '#fde047' },
+  CDR:  { border: '#f97316', bg: '#2d1f0a', label: '#fdba74' },
+  PDR:  { border: '#3b82f6', bg: '#1e3a5f', label: '#93c5fd' },
+  SRR:  { border: '#475569', bg: '#1a1f2e', label: '#94a3b8' },
+  null: { border: '#ef4444', bg: '#2d0a0a', label: '#fca5a5' },
+}
+
+function artifactPasses(value) {
+  if (value === null || value === false || value === 'amber') return false
+  if (Array.isArray(value)) return value.length > 0
+  return Boolean(value)
+}
+
+function computeGate(feature) {
+  let highest = null
+  for (const gate of GATES) {
+    const required = PROJECT_DATA.gateRequirements[gate]
+    const passes = required.every(key => artifactPasses(feature.artifacts[key]))
+    if (passes) highest = gate
+    else break  // gates are cumulative — stop at first failure
+  }
+  return highest
+}
+
+function computeEpicGate(epic) {
+  const featureGates = epic.featureIds.map(id => computeGate(PROJECT_DATA.features[id]))
+  // Find the minimum gate across all features (weakest-link)
+  for (const gate of GATES) {
+    if (featureGates.every(fg => fg !== null && GATES.indexOf(fg) >= GATES.indexOf(gate))) {
+      return gate
+    }
+  }
+  return null
+}
+
+// ── DAG rendering ────────────────────────────────────────────
+
+function buildDagSource() {
+  const epic = PROJECT_DATA.epics[0]
+  const feats = PROJECT_DATA.features
+  const lines = ['%%{init:{"theme":"base","themeVariables":{"primaryColor":"#1e2a3a","primaryTextColor":"#e2e8f0","primaryBorderColor":"#3b82f6","lineColor":"#374151","background":"#0f1117","fontFamily":"-apple-system,sans-serif","fontSize":"12px"}}}%%']
+  lines.push('flowchart TD')
+
+  // Epic node
+  const epicGate = computeEpicGate(epic)
+  const es = GATE_STYLE[epicGate] || GATE_STYLE[null]
+  lines.push(`  EPIC["🏔️ ${epic.id}\n${epic.title}\n● ${epicGate || 'NONE'}"]`)
+
+  // Feature nodes
+  for (const id of epic.featureIds) {
+    const f = feats[id]
+    const gate = computeGate(f)
+    const shortTitle = f.title.split(' · ')[1] || f.title
+    const ticketNum = f.title.split(' · ')[0].trim()
+    const nodeId = id.toUpperCase()
+    lines.push(`  ${nodeId}["${ticketNum}\n${shortTitle}\n● ${gate || 'NONE'}"]`)
+  }
+
+  // Edges
+  const edges = [
+    ['EPIC','KAN25'],['EPIC','KAN26'],
+    ['KAN25','KAN26'],
+    ['KAN26','KAN27'],['KAN26','KAN28'],['KAN26','KAN29'],['KAN26','KAN30'],
+    ['KAN27','KAN31'],['KAN28','KAN31'],['KAN29','KAN31'],['KAN30','KAN31'],
+    ['KAN31','KAN32'],
+  ]
+  for (const [a,b] of edges) lines.push(`  ${a} --> ${b}`)
+
+  // Styles
+  const epicStyle = `fill:${es.bg},stroke:${es.border},stroke-width:3px,color:${es.label}`
+  lines.push(`  style EPIC ${epicStyle}`)
+  for (const id of epic.featureIds) {
+    const gate = computeGate(feats[id])
+    const s = GATE_STYLE[gate] || GATE_STYLE[null]
+    const nodeId = id.toUpperCase()
+    lines.push(`  style ${nodeId} fill:${s.bg},stroke:${s.border},stroke-width:2px,color:${s.label}`)
+  }
+
+  // Click handlers
+  for (const id of epic.featureIds) {
+    const nodeId = id.toUpperCase()
+    lines.push(`  click ${nodeId} call showFeature("${id}")`)
+  }
+
+  return lines.join('\n')
+}
+
+async function initDag() {
+  mermaid.initialize({
+    startOnLoad: false, theme: 'base', securityLevel: 'loose',
+    themeVariables: {
+      primaryColor: '#1e2a3a', primaryTextColor: '#e2e8f0',
+      primaryBorderColor: '#3b82f6', lineColor: '#374151',
+      background: '#0f1117', fontFamily: '-apple-system,sans-serif', fontSize: '12px',
+    }
+  })
+  const source = buildDagSource()
+  const { svg } = await mermaid.render('main-dag', source)
+  document.getElementById('dag-wrap').innerHTML = svg
+}
+
+initDag()
+
+// ── Detail panel ──────────────────────────────────────────────
+// (injected in Task 3)
+
+// ── Package generator ─────────────────────────────────────────
+// (injected in Task 4)
+
+// ── Audit modal ───────────────────────────────────────────────
+// (injected in Task 5)
 </script>
 </body>
 </html>
