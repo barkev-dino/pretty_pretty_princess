@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KAN-23 · Traceability Map</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+/* ── Reset ── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #0f1117; color: #e2e8f0;
+  height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+}
+/* ── Topbar ── */
+.topbar {
+  padding: 10px 20px; border-bottom: 1px solid #1e2433;
+  display: flex; align-items: center; gap: 12px; flex-shrink: 0; flex-wrap: wrap;
+}
+.topbar-title { flex: 1; min-width: 200px; }
+.topbar-title h1 { font-size: 15px; font-weight: 700; color: #fff; }
+.topbar-title p  { font-size: 12px; color: #475569; margin-top: 2px; }
+.badge-epic {
+  background: #1e3a5f; border: 1px solid #3b82f6;
+  border-radius: 6px; padding: 2px 10px; font-size: 12px; color: #93c5fd;
+}
+/* Gate package buttons */
+.gate-btn {
+  border: 1px solid; border-radius: 6px; padding: 4px 12px;
+  font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+.gate-btn:hover { opacity: 0.8; }
+.gate-btn.SRR { background: #1a1f2e; border-color: #475569; color: #94a3b8; }
+.gate-btn.PDR { background: #1e3a5f; border-color: #3b82f6; color: #93c5fd; }
+.gate-btn.CDR { background: #2d1f0a; border-color: #f97316; color: #fdba74; }
+.gate-btn.TRR { background: #2d2a0a; border-color: #eab308; color: #fde047; }
+.gate-btn.PRR { background: #0a2d1a; border-color: #22c55e; color: #86efac; }
+.audit-btn {
+  background: #1e2433; border: 1px solid #374151; color: #94a3b8;
+  border-radius: 6px; padding: 4px 12px; font-size: 12px; cursor: pointer;
+}
+.audit-btn:hover { border-color: #60a5fa; color: #93c5fd; }
+/* ── Layout ── */
+.layout { display: flex; flex: 1; overflow: hidden; }
+.left {
+  width: 50%; border-right: 1px solid #1e2433;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.left-header { padding: 10px 18px; font-size: 11px; color: #475569; border-bottom: 1px solid #1e2433; flex-shrink: 0; }
+.dag-wrap { flex: 1; overflow: auto; padding: 20px; display: flex; justify-content: center; }
+.right { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+/* ── Placeholder ── */
+.placeholder { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #334155; gap: 8px; }
+.placeholder .arrow { font-size: 36px; }
+/* ── Detail panel ── */
+.detail { display: none; flex-direction: column; height: 100%; overflow: hidden; }
+.detail.visible { display: flex; }
+.detail-header { padding: 14px 18px 10px; border-bottom: 1px solid #1e2433; flex-shrink: 0; }
+.detail-header h2 { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+.detail-header p  { font-size: 12px; color: #64748b; line-height: 1.5; }
+.detail-body { flex: 1; overflow-y: auto; padding: 14px 18px; display: flex; flex-direction: column; gap: 14px; }
+.section-label { font-size: 10px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px; }
+/* Diagram box */
+.diagram-box { background: #1e2433; border: 1px solid #2d3748; border-radius: 8px; padding: 14px; overflow-x: auto; min-height: 60px; }
+.diagram-box svg { max-width: 100%; height: auto; }
+.dim-placeholder { font-size: 12px; color: #374151; font-style: italic; padding: 8px 0; }
+/* File cards */
+.file-cards { display: flex; flex-direction: column; gap: 6px; }
+.file-card { background: #1a1f2e; border: 1px solid #2d3748; border-radius: 7px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; }
+.file-card:hover { border-color: #3b82f6; }
+.type-badge { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; flex-shrink: 0; }
+.type-badge.impl { background: #1e3a5f; color: #60a5fa; }
+.type-badge.test { background: #1a3a2a; color: #34d399; }
+.type-badge.doc  { background: #2d1a3a; color: #c084fc; }
+.file-info { flex: 1; min-width: 0; }
+.file-info .path { font-size: 12px; font-family: monospace; color: #e2e8f0; }
+.file-info .desc { font-size: 11px; color: #64748b; margin-top: 1px; }
+.file-links { display: flex; gap: 5px; flex-shrink: 0; }
+.btn-main   { background: #1e3a5f; border: 1px solid #3b82f6; color: #93c5fd; border-radius: 5px; padding: 3px 9px; font-size: 11px; text-decoration: none; white-space: nowrap; }
+.btn-commit { background: #1a1f2e; border: 1px solid #374151; color: #64748b; border-radius: 5px; padding: 3px 7px; font-size: 11px; text-decoration: none; font-family: monospace; white-space: nowrap; }
+.btn-main:hover   { background: #1e4a7f; }
+.btn-commit:hover { border-color: #60a5fa; color: #93c5fd; }
+.jira-link { display: inline-flex; align-items: center; gap: 6px; background: #1e2433; border: 1px solid #2d3748; border-radius: 6px; padding: 6px 12px; font-size: 12px; color: #60a5fa; text-decoration: none; }
+.jira-link:hover { border-color: #3b82f6; }
+/* ── Gate badge inline ── */
+.gate-badge {
+  display: inline-block; font-size: 10px; font-weight: 700;
+  padding: 1px 7px; border-radius: 4px; border: 1px solid;
+}
+/* ── Audit modal ── */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: #141820; border: 1px solid #2d3748; border-radius: 12px; padding: 20px; max-width: 90vw; max-height: 85vh; overflow: auto; min-width: 600px; }
+.modal h2 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.modal .subtitle { font-size: 12px; color: #475569; margin-bottom: 16px; }
+.audit-grid { border-collapse: collapse; width: 100%; font-size: 11px; }
+.audit-grid th { padding: 6px 10px; text-align: center; color: #475569; font-weight: 600; text-transform: uppercase; font-size: 10px; border-bottom: 1px solid #1e2433; }
+.audit-grid th.feature-col { text-align: left; }
+.audit-grid td { padding: 5px 8px; text-align: center; border-bottom: 1px solid #1a1f2e; }
+.audit-grid td.feature-name { text-align: left; font-size: 12px; color: #e2e8f0; white-space: nowrap; padding-right: 16px; }
+.audit-cell { cursor: pointer; border-radius: 4px; padding: 3px 8px; font-size: 13px; user-select: none; }
+.audit-cell:hover { opacity: 0.8; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+.btn-confirm { background: #22c55e; color: #000; border: none; border-radius: 6px; padding: 6px 20px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.btn-cancel  { background: #1e2433; color: #94a3b8; border: 1px solid #374151; border-radius: 6px; padding: 6px 16px; font-size: 13px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════
+     PROJECT DATA — replace this block for a new project
+     ═══════════════════════════════════════════════════ -->
+<script>
+const PROJECT_DATA = {
+  project: {
+    name: 'Pretty Pretty Princess',
+    jiraUrl: 'https://barkev.atlassian.net/browse/',
+    repo: 'https://github.com/barkev-dino/pretty_pretty_princess',
+    branch: 'main',
+  },
+
+  epics: [
+    {
+      id: 'KAN-23',
+      title: 'Core Game Mechanics & Spinner',
+      featureIds: ['kan25','kan26','kan27','kan28','kan29','kan30','kan31','kan32'],
+    }
+  ],
+
+  gateRequirements: {
+    SRR: ['jira'],
+    PDR: ['jira', 'spec'],
+    CDR: ['jira', 'spec', 'plan', 'architecture'],
+    TRR: ['jira', 'spec', 'plan', 'architecture', 'impl'],
+    PRR: ['jira', 'spec', 'plan', 'architecture', 'impl', 'tests', 'audit'],
+  },
+
+  features: {
+    kan25: {
+      title: 'KAN-25 · Animated SVG Spinner',
+      desc: 'SVG pie wheel with 9 equal 40° slices. CSS transform rotation with cubic-bezier easing for fast-burst then suspenseful-crawl. Fixed red needle. Fires onSpinComplete after 2.5s transition.',
+      diagram: `flowchart LR
+  A["handleSpinStart()\nApp.tsx:28"] -->|"setSpinTrigger(t+1)"| B["&lt;Spinner&gt;\nSpinner.tsx:28"]
+  B -->|"watches spinTrigger\nuseEffect:33"| C["animate 2.5s\ncubic-bezier\nSpinner.tsx:56"]
+  C -->|"transitionend\n→ onSpinComplete()"| D["handleSpinComplete()\nApp.tsx:37"]`,
+      artifacts: {
+        jira: 'KAN-25',
+        spec: 'docs/superpowers/specs/2026-03-17-spinner-and-black-ring-design.md',
+        plan: 'docs/superpowers/plans/2026-03-17-spinner-and-black-ring.md',
+        architecture: true,
+        impl: [
+          { file: 'src/Spinner.tsx', lines: '1-76',  commit: '596345b', desc: 'Full spinner component — SVG slices, needle, animation' },
+          { file: 'src/App.tsx',     lines: '28-35', commit: '596345b', desc: 'handleSpinStart — triggers spin, plays sound' },
+        ],
+        tests: [
+          { file: 'src/game.test.ts', lines: '69-90', commit: '596345b', desc: 'SPINNER_SECTIONS shape and coverage tests' },
+        ],
+        audit: null,
+      }
+    },
+
+    kan26: {
+      title: 'KAN-26 · 9 Slice Action Definitions',
+      desc: 'SPINNER_SECTIONS array defines 9 equal slices: 5 jewels, black ring, pick any, you choose, random loss. randomSection() picks a weighted-random index.',
+      diagram: `flowchart LR
+  A["SPINNER_SECTIONS[]\nspin.ts:16"] -->|"randomSection()\nspin.ts:28"| B["sectionIndex\nApp.tsx:30"]
+  B -->|"stored in\npendingSection"| C["handleSpinComplete()\nApp.tsx:39"]
+  A -->|"section.action\nsection.jewel"| C`,
+      artifacts: {
+        jira: 'KAN-26',
+        spec: 'docs/superpowers/specs/2026-03-17-spinner-and-black-ring-design.md',
+        plan: 'docs/superpowers/plans/2026-03-17-spinner-and-black-ring.md',
+        architecture: true,
+        impl: [
+          { file: 'src/spin.ts', lines: '16-30', commit: '9ee9744', desc: 'SPINNER_SECTIONS array + randomSection()' },
+          { file: 'src/App.tsx', lines: '39-40',  commit: '9ee9744', desc: 'Action resolution — SPINNER_SECTIONS[pendingSection]' },
+        ],
+        tests: [
+          { file: 'src/game.test.ts', lines: '69-100', commit: '9ee9744', desc: '9 slice definitions, jewel coverage, uniqueness' },
+        ],
+        audit: null,
+      }
+    },
+
+    kan27: {
+      title: 'KAN-27 · Black Ring Mechanic',
+      desc: 'Landing on Black Ring clears hasBlackRing from all players and sets it on the current player. A player holding the black ring cannot win even with all 5 jewels.',
+      diagram: `flowchart LR
+  A["section.action\n=== blackRing\nApp.tsx:61"] -->|"clear all"| B["players.forEach\np.hasBlackRing=false\nApp.tsx:63"]
+  B -->|"set current"| C["current.hasBlackRing\n= true\nApp.tsx:64"]
+  C -->|"blocks win\ncheck L84"| D["!hasBlackRing\nguard\nApp.tsx:84"]
+  D --> E["⚫ indicator\nGameScreen.tsx:178"]`,
+      artifacts: {
+        jira: 'KAN-27',
+        spec: 'docs/superpowers/specs/2026-03-17-spinner-and-black-ring-design.md',
+        plan: 'docs/superpowers/plans/2026-03-17-spinner-and-black-ring.md',
+        architecture: true,
+        impl: [
+          { file: 'src/App.tsx',       lines: '61-65', commit: '596345b', desc: 'Black ring state mutation' },
+          { file: 'src/App.tsx',       lines: '84',    commit: '596345b', desc: 'Win check — !hasBlackRing guard' },
+          { file: 'src/GameScreen.tsx', lines: '178',  commit: '596345b', desc: '⚫ indicator on player row' },
+        ],
+        tests: [
+          { file: 'src/game.test.ts', lines: '95-134', commit: '596345b', desc: 'Black ring blocks win, transfers correctly' },
+        ],
+        audit: null,
+      }
+    },
+
+    kan28: {
+      title: 'KAN-28 · Pick Any Modal',
+      desc: 'Landing on Pick Any shows a modal with missing jewels. Player selects one → added to inventory → win check runs. If already complete, turn auto-advances.',
+      diagram: `flowchart TD
+  A["section.action\n=== pickAny\nApp.tsx:41"] -->|"missing.length === 0"| B["advanceTurn()\nApp.tsx:45"]
+  A -->|"has missing jewels\nsetPickAnyPending(true)"| C["PickAny Modal\nGameScreen.tsx"]
+  C -->|"onPickAny(jewel)"| D["handlePickAny()\nApp.tsx:95"]
+  D -->|"push jewel L100"| E["checkWin\nApp.tsx:102"]
+  E -->|"5 jewels &&\n!blackRing"| F["phase='won'\nApp.tsx:104"]
+  E -->|"game continues"| G["advanceTurn\nApp.tsx:108"]`,
+      artifacts: {
+        jira: 'KAN-28',
+        spec: 'docs/superpowers/specs/2026-03-17-spinner-and-black-ring-design.md',
+        plan: 'docs/superpowers/plans/2026-03-17-spinner-and-black-ring.md',
+        architecture: true,
+        impl: [
+          { file: 'src/App.tsx',       lines: '41-48',  commit: '9ee9744', desc: 'pickAny branch in handleSpinComplete' },
+          { file: 'src/App.tsx',       lines: '95-111', commit: '9ee9744', desc: 'handlePickAny — add jewel, win check, advance' },
+          { file: 'src/GameScreen.tsx', lines: '80-130', commit: '9ee9744', desc: 'Pick Any modal UI — missing jewel buttons' },
+        ],
+        tests: [
+          { file: 'src/game.test.ts', lines: '69-90', commit: '9ee9744', desc: 'Jewel section coverage (Pick Any preconditions)' },
+        ],
+        audit: null,
+      }
+    },
+
+    kan29: {
+      title: 'KAN-29 · You Choose — Put Back Modal',
+      desc: 'Landing on You Choose shows a modal of collected jewels. Player selects one → removed from inventory → turn advances. If nothing to return, auto-advances.',
+      diagram: `flowchart TD
+  A["section.action\n=== putBackChoice\nApp.tsx:50"] -->|"inventory.length === 0"| B["advanceTurn()\nApp.tsx:52"]
+  A -->|"has jewels\nsetPutBackChoicePending(true)"| C["You Choose Modal\nGameScreen.tsx"]
+  C -->|"onPutBackChoice(jewel)"| D["handlePutBackChoice()\nApp.tsx:113"]
+  D -->|"filter out jewel L118"| E["advanceTurn\nApp.tsx:120"]`,
+      artifacts: {
+        jira: 'KAN-29',
+        spec: 'docs/superpowers/specs/2026-03-17-spinner-and-black-ring-design.md',
+        plan: 'docs/superpowers/plans/2026-03-17-spinner-and-black-ring.md',
+        architecture: true,
+        impl: [
+          { file: 'src/App.tsx',       lines: '50-55',   commit: '9ee9744', desc: 'putBackChoice branch in handleSpinComplete' },
+          { file: 'src/App.tsx',       lines: '113-123', commit: '9ee9744', desc: 'handlePutBackChoice — remove jewel, advance' },
+          { file: 'src/GameScreen.tsx', lines: '130-165', commit: '9ee9744', desc: 'You Choose modal UI — inventory buttons' },
+        ],
+        tests: [
+          { file: 'src/game.test.ts', lines: '69-90', commit: '9ee9744', desc: 'Jewel uniqueness tests (put-back preconditions)' },
+        ],
+        audit: null,
+      }
+    },
+
+    kan30: {
+      title: 'KAN-30 · Random Loss Mechanic',
+      desc: "Landing on Random Loss removes a random jewel from the current player's inventory via splice. If the player has nothing, turn advances with a message.",
+      diagram: `flowchart LR
+  A["section.action\n=== putBackRandom\nApp.tsx:66"] -->|"inventory.length === 0"| B["no-op message\nApp.tsx:68"]
+  A -->|"has jewels"| C["splice random\nidx = rand*len\nApp.tsx:70"]
+  C -->|"lastSpin = lost msg"| D["advanceTurn\nApp.tsx:91"]`,
+      artifacts: {
+        jira: 'KAN-30',
+        spec: 'docs/superpowers/specs/2026-03-17-spinner-and-black-ring-design.md',
+        plan: 'docs/superpowers/plans/2026-03-17-spinner-and-black-ring.md',
+        architecture: true,
+        impl: [
+          { file: 'src/App.tsx', lines: '66-73', commit: '9ee9744', desc: 'putBackRandom — random splice from inventory' },
+        ],
+        tests: [
+          { file: 'src/game.test.ts', lines: '69-90', commit: '9ee9744', desc: 'Jewel count tests (random loss preconditions)' },
+        ],
+        audit: null,
+      }
+    },
+
+    kan31: {
+      title: 'KAN-31 · Win Detection & Win Screen',
+      desc: "After every jewel gain, checks if current player has all 5 jewels AND does not hold the black ring. Sets phase='won'. WinScreen shows player name, emoji, jewels, Play Again button.",
+      diagram: `flowchart TD
+  A["After jewel change\nApp.tsx:84"] -->|"inventory.length === 5\n&& !hasBlackRing"| B["phase='won'\nwinner=currentIndex\nApp.tsx:86"]
+  B -->|"phase === 'won'\nGameScreen.tsx:72"| C["&lt;WinScreen&gt;\nGameScreen.tsx:22"]
+  C --> D["emoji, name, jewels\nL54-57"]
+  C -->|"Play Again"| E["handleNewGame()\nApp.tsx:132"]`,
+      artifacts: {
+        jira: 'KAN-31',
+        spec: 'docs/superpowers/specs/2026-03-17-spinner-and-black-ring-design.md',
+        plan: 'docs/superpowers/plans/2026-03-17-spinner-and-black-ring.md',
+        architecture: true,
+        impl: [
+          { file: 'src/App.tsx',       lines: '84-89',  commit: 'b386a41', desc: 'Win condition check — 5 jewels + no black ring' },
+          { file: 'src/GameScreen.tsx', lines: '22-74', commit: 'b386a41', desc: 'WinScreen component + phase routing' },
+          { file: 'src/App.tsx',       lines: '132-135', commit: 'b386a41', desc: 'handleNewGame — full reset' },
+        ],
+        tests: [
+          { file: 'src/game.test.ts', lines: '9-17', commit: 'b386a41', desc: 'JEWELRY has exactly 5 items (win condition basis)' },
+        ],
+        audit: null,
+      }
+    },
+
+    kan32: {
+      title: 'KAN-32 · Player Jewel Board & Turn Display',
+      desc: 'Shows a row per player: color dot, name, 5 jewel slots (bright if collected, faded if missing), black ring indicator. Active player row highlighted. Animated turn banner at top.',
+      diagram: `flowchart TD
+  A["&lt;GameScreen&gt;\nGameScreen.tsx"] --> B["Turn Banner\nkey=currentIndex\nanimated re-mount"]
+  A --> C["players.map\n→ PlayerRow"]
+  C -->|"p === active"| D["colored border\nhighlight"]
+  C -->|"p.inventory"| E["jewel slots\nbright / faded"]
+  C -->|"p.hasBlackRing"| F["⚫ indicator\nL178"]`,
+      artifacts: {
+        jira: 'KAN-32',
+        spec: 'docs/superpowers/specs/2026-03-17-spinner-and-black-ring-design.md',
+        plan: 'docs/superpowers/plans/2026-03-17-spinner-and-black-ring.md',
+        architecture: true,
+        impl: [
+          { file: 'src/GameScreen.tsx', lines: '70-226', commit: 'b386a41', desc: 'Full GameScreen — board, turn banner, player rows' },
+          { file: 'src/types.ts',       lines: '1-30',   commit: '596345b', desc: 'Player, GameState, JewelryId types' },
+        ],
+        tests: [
+          { file: 'src/game.test.ts', lines: '19-45', commit: 'b386a41', desc: 'CHARACTERS — unique emojis, colors, hex validation' },
+        ],
+        audit: null,
+      }
+    },
+  }
+}
+</script>
+<!-- ═══════════════════════════════════════════════════
+     END PROJECT DATA
+     ═══════════════════════════════════════════════════ -->
+
+<!-- ── Topbar ── -->
+<div class="topbar">
+  <span class="badge-epic">EPIC</span>
+  <div class="topbar-title">
+    <h1 id="epic-title">KAN-23 · Core Game Mechanics &amp; Spinner</h1>
+    <p>Click a feature node to explore — then generate a review package</p>
+  </div>
+  <button class="audit-btn" onclick="openAuditModal()">⚙ Run Audit</button>
+  <button class="gate-btn SRR" onclick="generatePackage('SRR')">SRR Package</button>
+  <button class="gate-btn PDR" onclick="generatePackage('PDR')">PDR Package</button>
+  <button class="gate-btn CDR" onclick="generatePackage('CDR')">CDR Package</button>
+  <button class="gate-btn TRR" onclick="generatePackage('TRR')">TRR Package</button>
+  <button class="gate-btn PRR" onclick="generatePackage('PRR')">PRR Package</button>
+</div>
+
+<!-- ── Main layout ── -->
+<div class="layout">
+  <div class="left">
+    <div class="left-header">Dependency graph — logical build order · click a node to explore</div>
+    <div class="dag-wrap" id="dag-wrap"><!-- DAG rendered by JS --></div>
+  </div>
+  <div class="right">
+    <div class="placeholder" id="placeholder">
+      <div class="arrow">←</div>
+      <p>Click any feature node to explore</p>
+    </div>
+    <div class="detail" id="detail-panel">
+      <div class="detail-header">
+        <h2 id="d-title"></h2>
+        <p  id="d-desc"></p>
+      </div>
+      <div class="detail-body">
+        <div>
+          <div class="section-label">Documents</div>
+          <div class="file-cards" id="d-docs"></div>
+        </div>
+        <div>
+          <div class="section-label">Architecture</div>
+          <div class="diagram-box" id="d-diagram"></div>
+        </div>
+        <div>
+          <div class="section-label">Implementation</div>
+          <div class="file-cards" id="d-impl"></div>
+        </div>
+        <div>
+          <div class="section-label">Tests</div>
+          <div class="file-cards" id="d-tests"></div>
+        </div>
+        <div>
+          <a id="d-jira" class="jira-link" href="#" target="_blank">🔗 View Jira ticket</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Audit modal ── -->
+<div class="modal-overlay" id="audit-modal">
+  <div class="modal">
+    <h2>⚙ Artifact Audit</h2>
+    <p class="subtitle">Click each cell to cycle: ✅ present → 🟡 partial → ❌ missing. Confirm to update gate badges.</p>
+    <div id="audit-grid-wrap"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeAuditModal()">Cancel</button>
+      <button class="btn-confirm" onclick="confirmAudit()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Engine injected in Task 2 ──
+</script>
+</body>
+</html>
