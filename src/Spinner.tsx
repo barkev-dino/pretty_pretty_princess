@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
-import { SPINNER_SECTIONS } from './spin'
+import { SpinnerSection } from './spin'
 
-const SIZE = 280
+const SIZE = 340
 const CX = SIZE / 2
 const CY = SIZE / 2
-const R = 118
-const LABEL_R = 78
+const R = 142
+const LABEL_R = 96
 
 function toXY(angleDeg: number, r: number) {
   const rad = ((angleDeg - 90) * Math.PI) / 180
@@ -22,27 +22,32 @@ function wedgePath(startDeg: number, endDeg: number): string {
 interface Props {
   spinTrigger: number
   targetSection: number
+  extraRotations: number
+  spinDuration: number
   onSpinComplete: () => void
+  sections: SpinnerSection[]
+  ringColor: string
+  needleColor: string
 }
 
-export default function Spinner({ spinTrigger, targetSection, onSpinComplete }: Props) {
+export default function Spinner({ spinTrigger, targetSection, extraRotations, spinDuration, onSpinComplete, sections, ringColor, needleColor }: Props) {
   const [rotation, setRotation] = useState(0)
   const [animating, setAnimating] = useState(false)
 
   useEffect(() => {
     if (spinTrigger === 0) return
-    const s = SPINNER_SECTIONS[targetSection]
+    const s = sections[targetSection]
     const sectionCenter = (s.startDeg + s.endDeg) / 2
     const targetAngle = (360 - sectionCenter + 360) % 360
     const currentMod = ((rotation % 360) + 360) % 360
     const delta = (targetAngle - currentMod + 360) % 360
-    const newRotation = rotation + delta + 5 * 360
+    const newRotation = rotation + delta + extraRotations * 360
     setAnimating(true)
     setRotation(newRotation)
     const t = setTimeout(() => {
       setAnimating(false)
       onSpinComplete()
-    }, 2600)
+    }, spinDuration + 100)
     return () => clearTimeout(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spinTrigger])
@@ -52,25 +57,26 @@ export default function Spinner({ spinTrigger, targetSection, onSpinComplete }: 
       <g style={{
         transform: `rotate(${rotation}deg)`,
         transformOrigin: `${CX}px ${CY}px`,
-        // Fast burst then suspenseful crawl to a stop
-        transition: animating ? 'transform 2.5s cubic-bezier(0.0, 0.0, 0.08, 1.0)' : 'none',
+        transition: animating ? `transform ${spinDuration}ms cubic-bezier(0.0, 0.0, 0.08, 1.0)` : 'none',
       }}>
-        {SPINNER_SECTIONS.map((s, i) => (
+        {sections.map((s, i) => (
           <path key={i} d={wedgePath(s.startDeg, s.endDeg)} fill={s.color} stroke="#fff" strokeWidth="2" />
         ))}
-        {SPINNER_SECTIONS.map((s, i) => {
+        {sections.map((s, i) => {
           const center = (s.startDeg + s.endDeg) / 2
           const pos = toXY(center, LABEL_R)
+          const arcDeg = s.endDeg - s.startDeg
+          const fontSize = arcDeg <= 25 ? '16' : '26'
           return (
-            <text key={i} x={pos.x} y={pos.y} textAnchor="middle" dominantBaseline="middle" fontSize="22">
+            <text key={i} x={pos.x} y={pos.y} textAnchor="middle" dominantBaseline="middle" fontSize={fontSize}>
               {s.emoji}
             </text>
           )
         })}
         <circle cx={CX} cy={CY} r={14} fill="#fff" stroke="#e0e0e0" strokeWidth="2" />
       </g>
-      <circle cx={CX} cy={CY} r={R + 4} fill="none" stroke="#9c27b0" strokeWidth="4" />
-      <polygon points={`${CX - 11},3 ${CX + 11},3 ${CX},22`} fill="#c62828" stroke="#fff" strokeWidth="1.5" />
+      <circle cx={CX} cy={CY} r={R + 6} fill="none" stroke={ringColor} strokeWidth="6" />
+      <polygon points={`${CX - 13},2 ${CX + 13},2 ${CX},28`} fill={needleColor} stroke="#fff" strokeWidth="2" />
     </svg>
   )
 }
