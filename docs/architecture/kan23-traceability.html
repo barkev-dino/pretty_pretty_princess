@@ -722,7 +722,85 @@ ${below.length > 0 ? `<div style="margin-top:24px;padding:12px 16px;background:#
 }
 
 // ── Audit modal ───────────────────────────────────────────────
-// (injected in Task 5)
+
+const ARTIFACT_KEYS = ['jira', 'spec', 'plan', 'architecture', 'impl', 'tests', 'audit']
+const AUDIT_STATES  = ['green', 'amber', 'red']
+const AUDIT_ICONS   = { green: '✅', amber: '🟡', red: '❌' }
+
+// In-memory audit overlay (doesn't mutate PROJECT_DATA until Confirm)
+let auditOverlay = {}
+
+function artifactToState(value) {
+  if (value === 'amber') return 'amber'
+  if (value === null || value === false || (Array.isArray(value) && value.length === 0)) return 'red'
+  return 'green'
+}
+
+function openAuditModal() {
+  const epic = PROJECT_DATA.epics[0]
+  auditOverlay = {}
+
+  // Pre-populate from current PROJECT_DATA
+  for (const id of epic.featureIds) {
+    auditOverlay[id] = {}
+    for (const key of ARTIFACT_KEYS) {
+      auditOverlay[id][key] = artifactToState(PROJECT_DATA.features[id].artifacts[key])
+    }
+  }
+
+  // Build grid
+  const header = `<tr>
+    <th class="feature-col">Feature</th>
+    ${ARTIFACT_KEYS.map(k => `<th>${k}</th>`).join('')}
+  </tr>`
+
+  const rows = epic.featureIds.map(id => {
+    const f = PROJECT_DATA.features[id]
+    const cells = ARTIFACT_KEYS.map(key => {
+      const state = auditOverlay[id][key]
+      return `<td><span class="audit-cell" data-fid="${id}" data-key="${key}" onclick="cycleAuditCell(this)">${AUDIT_ICONS[state]}</span></td>`
+    }).join('')
+    return `<tr><td class="feature-name">${f.title.split('·')[0].trim()}</td>${cells}</tr>`
+  }).join('')
+
+  document.getElementById('audit-grid-wrap').innerHTML =
+    `<table class="audit-grid"><thead>${header}</thead><tbody>${rows}</tbody></table>`
+  document.getElementById('audit-modal').classList.add('open')
+}
+
+function cycleAuditCell(el) {
+  const { fid, key } = el.dataset
+  const currentIcon = el.textContent.trim()
+  const currentState = Object.keys(AUDIT_ICONS).find(s => AUDIT_ICONS[s] === currentIcon) || 'green'
+  const currentIdx = AUDIT_STATES.indexOf(currentState)
+  const next = AUDIT_STATES[(currentIdx + 1) % AUDIT_STATES.length]
+  auditOverlay[fid][key] = next
+  el.textContent = AUDIT_ICONS[next]
+}
+
+function closeAuditModal() {
+  document.getElementById('audit-modal').classList.remove('open')
+}
+
+async function confirmAudit() {
+  // Apply overlay to PROJECT_DATA artifacts
+  for (const [id, keys] of Object.entries(auditOverlay)) {
+    for (const [key, state] of Object.entries(keys)) {
+      const current = PROJECT_DATA.features[id].artifacts[key]
+      if (state === 'green') {
+        // Keep existing value if already truthy; set a placeholder string if currently null
+        if (!artifactPasses(current)) PROJECT_DATA.features[id].artifacts[key] = 'confirmed'
+      } else if (state === 'amber') {
+        PROJECT_DATA.features[id].artifacts[key] = 'amber'
+      } else {
+        PROJECT_DATA.features[id].artifacts[key] = null
+      }
+    }
+  }
+  closeAuditModal()
+  // Re-render DAG with updated gate badges
+  await initDag()
+}
 </script>
 </body>
 </html>
