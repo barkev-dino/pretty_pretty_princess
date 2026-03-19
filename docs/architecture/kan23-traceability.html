@@ -613,7 +613,113 @@ async function showFeature(id) {
 }
 
 // ── Package generator ─────────────────────────────────────────
-// (injected in Task 4)
+
+function gateColor(gate) {
+  return (GATE_STYLE[gate] || GATE_STYLE[null]).border
+}
+
+function generatePackage(requestedGate) {
+  const { project, features, gateRequirements, epics } = PROJECT_DATA
+  const allFeatureIds = epics[0].featureIds
+  const gateIndex = GATES.indexOf(requestedGate)
+  const date = new Date().toISOString().split('T')[0]
+
+  // Compute gate for each feature
+  const featureGates = {}
+  for (const id of allFeatureIds) featureGates[id] = computeGate(features[id])
+
+  const atOrAbove = allFeatureIds.filter(id => {
+    const fg = featureGates[id]
+    return fg !== null && GATES.indexOf(fg) >= gateIndex
+  })
+  const below = allFeatureIds.filter(id => !atOrAbove.includes(id))
+
+  // Required artifacts for this gate
+  const required = gateRequirements[requestedGate]
+
+  // Gap analysis helper
+  function gapFor(id) {
+    return required.filter(key => !artifactPasses(features[id].artifacts[key]))
+  }
+
+  // Build feature body section (only for at-or-above features)
+  function featureSection(id) {
+    const f = features[id]
+    const gate = featureGates[id]
+    const s = GATE_STYLE[gate] || GATE_STYLE[null]
+    let html = `<div style="margin:24px 0;padding:16px;background:#1a1f2e;border:1px solid ${s.border};border-radius:10px;">`
+    html += `<h3 style="color:#fff;margin-bottom:4px;">${f.title}</h3>`
+    html += `<span style="background:${s.bg};color:${s.label};border:1px solid ${s.border};border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;">● ${gate}</span>`
+
+    // Show only artifacts required for this gate
+    for (const key of required) {
+      const val = f.artifacts[key]
+      html += `<div style="margin-top:10px;"><span style="font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;">${key}</span> `
+      if (key === 'architecture' && val && f.diagram) {
+        html += `<span style="color:#34d399;font-size:12px;">✅ Inline diagram present</span>`
+      } else if (key === 'impl' || key === 'tests') {
+        if (val && val.length > 0) {
+          html += val.map(fv =>
+            `<div style="font-size:12px;font-family:monospace;color:#93c5fd;margin-top:4px;">` +
+            `<a href="${ghLink(fv.file, fv.lines)}" style="color:#93c5fd;">${fv.file}:${fv.lines}</a> ` +
+            `<a href="${ghCommit(fv.commit, fv.file, fv.lines)}" style="color:#64748b;font-size:11px;">📌 ${fv.commit.slice(0,7)}</a></div>`
+          ).join('')
+        }
+      } else if ((key === 'spec' || key === 'plan') && typeof val === 'string') {
+        html += `<div style="margin-top:4px;"><a href="${docLink(val)}" style="color:#93c5fd;font-size:12px;">${val}</a></div>`
+      } else if (typeof val === 'string') {
+        html += `<span style="color:#34d399;font-size:12px;">✅ ${val}</span>`
+      }
+      html += '</div>'
+    }
+    html += '</div>'
+    return html
+  }
+
+  const html = `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<title>${project.name} — ${requestedGate} Review Package</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1117;color:#e2e8f0;max-width:900px;margin:0 auto;padding:40px 24px;}
+h1{font-size:26px;color:#fff;margin-bottom:4px;}
+h2{font-size:16px;color:#fff;margin:32px 0 12px;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{text-align:left;padding:8px 12px;border-bottom:2px solid #1e2433;color:#475569;font-weight:600;}
+td{padding:8px 12px;border-bottom:1px solid #1e2433;}
+.tag{display:inline-block;border-radius:4px;border:1px solid;padding:1px 8px;font-size:11px;font-weight:700;}
+</style>
+</head><body>
+<div style="border-bottom:2px solid ${gateColor(requestedGate)};padding-bottom:20px;margin-bottom:32px;">
+  <p style="color:#64748b;font-size:13px;margin-bottom:8px;">${project.name} · Jira: ${project.jiraUrl.replace('https://','')}</p>
+  <h1>${requestedGate} Review Package</h1>
+  <p style="color:#64748b;font-size:13px;">Generated: ${date} · ${atOrAbove.length}/${allFeatureIds.length} features at or above ${requestedGate}</p>
+</div>
+<h2>Executive Summary</h2>
+<table>
+<tr><th>Feature</th><th>Gate Achieved</th><th>Gap (for ${requestedGate})</th></tr>
+${allFeatureIds.map(id => {
+  const f = features[id]
+  const gate = featureGates[id]
+  const s = GATE_STYLE[gate] || GATE_STYLE[null]
+  const gap = gapFor(id)
+  const gapText = gap.length === 0 ? '—' : gap.join(', ')
+  const status = atOrAbove.includes(id)
+    ? `<span class="tag" style="background:${s.bg};border-color:${s.border};color:${s.label};">● ${gate}</span>`
+    : `<span class="tag" style="background:#2d0a0a;border-color:#ef4444;color:#fca5a5;">● ${gate || 'NONE'}</span> Not yet at ${requestedGate}`
+  return `<tr><td>${f.title}</td><td>${status}</td><td style="color:${gap.length?'#f97316':'#64748b'};font-size:12px;">${gapText}</td></tr>`
+}).join('')}
+</table>
+<h2>Feature Details <span style="font-size:13px;color:#475569;">(${atOrAbove.length} features at or above ${requestedGate})</span></h2>
+${atOrAbove.map(id => featureSection(id)).join('')}
+${below.length > 0 ? `<div style="margin-top:24px;padding:12px 16px;background:#1a1f2e;border:1px solid #374151;border-radius:8px;color:#64748b;font-size:13px;">
+  <strong style="color:#94a3b8;">Not yet at ${requestedGate}:</strong> ${below.map(id => features[id].title.split('·')[0].trim()).join(', ')}
+</div>` : ''}
+</body></html>`
+
+  const w = window.open('', '_blank')
+  w.document.write(html)
+  w.document.close()
+}
 
 // ── Audit modal ───────────────────────────────────────────────
 // (injected in Task 5)
