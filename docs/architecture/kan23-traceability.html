@@ -509,7 +509,20 @@ async function initDag() {
   })
   const source = buildDagSource()
   const { svg } = await mermaid.render('main-dag', source)
-  document.getElementById('dag-wrap').innerHTML = svg
+  const wrap = document.getElementById('dag-wrap')
+  wrap.innerHTML = svg
+
+  // Mermaid click directives don't reliably fire on dynamically injected SVG —
+  // attach handlers manually by matching node labels to feature IDs.
+  const epic = PROJECT_DATA.epics[0]
+  epic.featureIds.forEach(id => {
+    const nodeId = id.toUpperCase()
+    // Mermaid generates IDs like "flowchart-KAN25-0", "flowchart-KAN25-1", etc.
+    wrap.querySelectorAll(`[id^="flowchart-${nodeId}"]`).forEach(el => {
+      el.style.cursor = 'pointer'
+      el.addEventListener('click', () => showFeature(id))
+    })
+  })
 }
 
 initDag()
