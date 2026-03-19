@@ -440,13 +440,14 @@ function computeGate(feature) {
 
 function computeEpicGate(epic) {
   const featureGates = epic.featureIds.map(id => computeGate(PROJECT_DATA.features[id]))
-  // Find the minimum gate across all features (weakest-link)
+  // Weakest-link: highest gate that ALL features have reached
+  let highest = null
   for (const gate of GATES) {
-    if (featureGates.every(fg => fg !== null && GATES.indexOf(fg) >= GATES.indexOf(gate))) {
-      return gate
-    }
+    const allPass = featureGates.every(fg => fg !== null && GATES.indexOf(fg) >= GATES.indexOf(gate))
+    if (allPass) highest = gate
+    else break
   }
-  return null
+  return highest
 }
 
 // ── DAG rendering ────────────────────────────────────────────
