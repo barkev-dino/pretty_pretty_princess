@@ -1,25 +1,28 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: Georgia, 'Times New Roman', serif;
-  background: linear-gradient(135deg, #fce4ec 0%, #f3e5f5 50%, #e8eaf6 100%);
+  font-family: 'Nunito', 'Comic Sans MS', cursive, sans-serif;
   min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
 }
 
 #root {
   width: 100%;
-  max-width: 600px;
   min-height: 100vh;
-  padding: 24px 16px;
+  padding: 16px 24px;
 }
 
 button {
   touch-action: manipulation;
+  font-family: inherit;
 }
 
 button:active {
-  opacity: 0.75;
+  transform: scale(0.96);
+  opacity: 0.9;
+}
+
+input {
+  font-family: inherit;
 }
