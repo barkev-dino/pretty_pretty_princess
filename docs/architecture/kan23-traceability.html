@@ -519,7 +519,98 @@ async function initDag() {
 initDag()
 
 // ── Detail panel ──────────────────────────────────────────────
-// (injected in Task 3)
+
+function ghLink(file, lines) {
+  const { repo, branch } = PROJECT_DATA.project
+  return `${repo}/blob/${branch}/${file}#L${lines}`
+}
+function ghCommit(commit, file, lines) {
+  const { repo } = PROJECT_DATA.project
+  return `${repo}/blob/${commit}/${file}#L${lines}`
+}
+function docLink(path) {
+  const { repo, branch } = PROJECT_DATA.project
+  return `${repo}/blob/${branch}/${path}`
+}
+
+function renderFileCards(containerId, files, type) {
+  const el = document.getElementById(containerId)
+  if (!files || files.length === 0) { el.innerHTML = '<p class="dim-placeholder">None</p>'; return }
+  el.innerHTML = files.map(f => `
+    <div class="file-card">
+      <span class="type-badge ${type}">${type}</span>
+      <div class="file-info">
+        <div class="path">${f.file}${f.lines ? ':' + f.lines : ''}</div>
+        <div class="desc">${f.desc}</div>
+      </div>
+      <div class="file-links">
+        <a class="btn-main"   href="${ghLink(f.file, f.lines)}" target="_blank">View ↗</a>
+        ${f.commit ? `<a class="btn-commit" href="${ghCommit(f.commit, f.file, f.lines)}" target="_blank" title="Frozen at ${f.commit}">📌 ${f.commit.slice(0,7)}</a>` : ''}
+      </div>
+    </div>`).join('')
+}
+
+function renderDocCards(containerId, artifacts) {
+  const el = document.getElementById(containerId)
+  const cards = []
+  for (const key of ['spec', 'plan']) {
+    const val = artifacts[key]
+    if (val && val !== 'amber') {
+      cards.push(`
+        <div class="file-card">
+          <span class="type-badge doc">${key}</span>
+          <div class="file-info">
+            <div class="path">${val}</div>
+          </div>
+          <div class="file-links">
+            <a class="btn-main" href="${docLink(val)}" target="_blank">View ↗</a>
+          </div>
+        </div>`)
+    } else {
+      const label = val === 'amber' ? '🟡 In progress' : '❌ Missing'
+      cards.push(`<div class="file-card"><span class="type-badge doc">${key}</span><div class="file-info"><div class="path dim-placeholder">${label}</div></div></div>`)
+    }
+  }
+  el.innerHTML = cards.join('')
+}
+
+async function showFeature(id) {
+  const f = PROJECT_DATA.features[id]
+  if (!f) return
+
+  document.getElementById('placeholder').style.display = 'none'
+  const panel = document.getElementById('detail-panel')
+  panel.classList.add('visible')
+
+  document.getElementById('d-title').textContent = f.title
+  document.getElementById('d-desc').textContent  = f.desc
+
+  // Documents
+  renderDocCards('d-docs', f.artifacts)
+
+  // Architecture diagram
+  const diagEl = document.getElementById('d-diagram')
+  if (f.artifacts.architecture && f.diagram) {
+    diagEl.innerHTML = '<div class="dim-placeholder">Rendering…</div>'
+    try {
+      const { svg } = await mermaid.render('diag-' + id + '-' + Date.now(), f.diagram)
+      diagEl.innerHTML = svg
+    } catch(e) {
+      diagEl.innerHTML = `<pre class="dim-placeholder">${e.message}</pre>`
+    }
+  } else {
+    diagEl.innerHTML = '<p class="dim-placeholder">No diagram yet</p>'
+  }
+
+  // Impl + tests
+  renderFileCards('d-impl',  f.artifacts.impl,  'impl')
+  renderFileCards('d-tests', f.artifacts.tests, 'test')
+
+  // Jira link
+  const jiraEl = document.getElementById('d-jira')
+  jiraEl.href = PROJECT_DATA.project.jiraUrl + f.artifacts.jira
+  jiraEl.textContent = '🔗 View Jira ticket — ' + f.artifacts.jira
+}
 
 // ── Package generator ─────────────────────────────────────────
 // (injected in Task 4)
